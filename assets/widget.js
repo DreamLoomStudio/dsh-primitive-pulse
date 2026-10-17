@@ -17,7 +17,7 @@
   var SELF_V = (function () {
     try {
       var src = (document.currentScript && document.currentScript.src) || ''
-      var m = /[?&]v=(\d+)/.exec(src)
+      var m = /[?&]v=(-?\d+)/.exec(src)
       return m ? m[1] : ''
     } catch (e) { return '' }
   })()
