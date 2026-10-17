@@ -54,49 +54,51 @@
       '-webkit-mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,#000 56%,transparent 100%);',
       'mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,#000 56%,transparent 100%)}',
       '#dsh-pulse-bg.on{opacity:.62}',
-      /* 浅色主题：星图本来是「白点亮墨底」，直接铺在白底上等于隐形。
-         invert + hue-rotate 把明度翻过来、色相留住 → 变成深蓝墨线，白底上才看得见。 */
-      '#dsh-pulse-bg.light{filter:invert(1) hue-rotate(180deg)}',
-      '#dsh-pulse-bg.light.on{opacity:.46}',
-      '#dsh-pulse-panel{position:fixed;right:18px;bottom:160px;width:404px;max-height:calc(100vh - 220px);',
-      'background:rgba(9,14,22,.97);border:1px solid rgba(96,150,220,.28);border-radius:14px;',
+      '#dsh-pulse-bg.light.on{opacity:.50}',
+      /* 面板配色走变量：默认暗色，html.dsp-light 时整体翻成明底暗字（星图卡仍保持暗底） */
+      '#dsh-pulse-panel{--p-bg:rgba(9,14,22,.97);--p-fg:#cfe0f2;--p-dim:#7f97b4;--p-head:#8fb3d6;--p-sub:#5d7590;',
+      '--p-line:rgba(96,150,220,.16);--p-accent:#5aa4ff;--p-card:#0b1420;--p-headd:linear-gradient(180deg,rgba(30,52,80,.55),rgba(12,18,28,.2));--p-bar1:#2f6fb5;--p-bar2:#5aa4ff;',
+      'position:fixed;right:18px;bottom:160px;width:404px;max-height:calc(100vh - 220px);',
+      'background:var(--p-bg);border:1px solid var(--p-line);border-radius:14px;',
       'box-shadow:0 18px 60px rgba(0,0,0,.62);z-index:' + Z + ';display:none;flex-direction:column;',
-      'font:12px/1.5 -apple-system,"Segoe UI",system-ui,"Microsoft YaHei",sans-serif;color:#cfe0f2;overflow:hidden}',
+      'font:12px/1.5 -apple-system,"Segoe UI",system-ui,"Microsoft YaHei",sans-serif;color:var(--p-fg);overflow:hidden}',
+      'html.dsp-light #dsh-pulse-panel{--p-bg:rgba(252,253,255,.98);--p-fg:#1e2a38;--p-dim:#5a6b7d;--p-head:#33506e;--p-sub:#66788a;',
+      '--p-line:rgba(40,70,110,.14);--p-accent:#2b6fd0;--p-card:#f2f5fa;--p-bar1:#7fa8dd;--p-bar2:#2b6fd0;--p-headd:linear-gradient(180deg,rgba(226,233,244,.75),rgba(246,249,253,.35));box-shadow:0 18px 50px rgba(30,50,80,.18)}',
       '#dsh-pulse-panel.on{display:flex}',
       '.dsp-head{display:flex;align-items:center;gap:8px;padding:9px 11px;border-bottom:1px solid rgba(96,150,220,.16);',
-      'cursor:move;user-select:none;background:linear-gradient(180deg,rgba(30,52,80,.55),rgba(12,18,28,.2))}',
+      'cursor:move;user-select:none;background:var(--p-headd)}',
       '.dsp-dot{width:7px;height:7px;border-radius:50%;background:#4ea1ff;box-shadow:0 0 8px #4ea1ff}',
-      '.dsp-title{font-weight:600;letter-spacing:.04em;color:#e6f1ff}',
-      '.dsp-sub{color:#7f97b4;font-size:11px;margin-left:auto;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-      '.dsp-x{cursor:pointer;color:#7f97b4;font-size:15px;line-height:1;padding:0 2px}',
-    '.dsp-rl{cursor:pointer;color:#7f97b4;font-size:14px;line-height:1;padding:0 4px;margin-left:2px}',
+      '.dsp-title{font-weight:600;letter-spacing:.04em;color:var(--p-fg)}',
+      '.dsp-sub{color:var(--p-dim);font-size:11px;margin-left:auto;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.dsp-x{cursor:pointer;color:var(--p-dim);font-size:15px;line-height:1;padding:0 2px}',
+    '.dsp-rl{cursor:pointer;color:var(--p-dim);font-size:14px;line-height:1;padding:0 4px;margin-left:2px}',
     '.dsp-rl:hover{color:#8fc4ff;transform:rotate(180deg);transition:transform .3s}',
-      '.dsp-x:hover{color:#e6f1ff}',
+      '.dsp-x:hover{color:var(--p-fg)}',
       '.dsp-body{padding:8px 11px 11px;overflow:auto}',
       '.dsp-sec{margin-top:9px}',
-      '.dsp-sec h4{margin:0 0 5px;font-size:11px;font-weight:600;color:#8fb3d6;letter-spacing:.05em;display:flex;align-items:center;gap:6px}',
-      '.dsp-sec h4 span{color:#5d7590;font-weight:400;letter-spacing:0}',
+      '.dsp-sec h4{margin:0 0 5px;font-size:11px;font-weight:600;color:var(--p-head);letter-spacing:.05em;display:flex;align-items:center;gap:6px}',
+      '.dsp-sec h4 span{color:var(--p-sub);font-weight:400;letter-spacing:0}',
       '.dsp-sec h4 em{margin-left:auto;font-style:normal;font-size:10.5px;color:#5aa4ff;cursor:pointer;border:1px solid rgba(90,164,255,.35);',
       'border-radius:5px;padding:1px 6px}',
       '.dsp-sec h4 em.on{background:rgba(90,164,255,.18);color:#bcd9ff}',
     /* 液态主题：面板里的星图改成浅纸底 */
-    'html.dsp-liquid #dsp-brain{background:radial-gradient(circle at 50% 45%,#fdfdff,#e9ecf2)}',
-    'html.dsp-liquid #dsh-pulse-bg.light{filter:none}',
+    'html.dsp-light #dsp-eeg{background:#0b1420;filter:invert(1) hue-rotate(180deg)}',
+    
       'canvas.dsp-cv{width:100%;display:block;border-radius:8px;background:radial-gradient(circle at 50% 45%,rgba(22,38,58,.55),rgba(7,11,18,.9))}',
       '.dsp-fp{display:flex;align-items:center;gap:6px;margin:3px 0}',
-      '.dsp-fp i{font-style:normal;width:74px;color:#a9c3dc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}',
-      '.dsp-fp b{font-weight:400;height:7px;border-radius:3px;background:linear-gradient(90deg,#2f6fb5,#5aa4ff);min-width:2px}',
-      '.dsp-fp u{text-decoration:none;color:#63809c;font-size:10px;width:30px;text-align:right}',
-      '.dsp-cap{color:#7f97b4;font-size:11px;margin-top:8px;line-height:1.6;border-left:2px solid rgba(90,164,255,.45);padding-left:7px}',
-      '.dsp-foot{display:flex;align-items:center;gap:8px;padding:7px 11px;border-top:1px solid rgba(96,150,220,.14);color:#5d7590;font-size:10.5px}',
-      '.dsp-link{cursor:pointer;color:#5aa4ff;text-decoration:none}',
+      '.dsp-fp i{font-style:normal;width:74px;color:var(--p-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}',
+      '.dsp-fp b{font-weight:400;height:7px;border-radius:3px;background:linear-gradient(90deg,var(--p-bar1),var(--p-bar2));min-width:2px}',
+      '.dsp-fp u{text-decoration:none;color:var(--p-sub);font-size:10px;width:30px;text-align:right}',
+      '.dsp-cap{color:var(--p-dim);font-size:11px;margin-top:8px;line-height:1.6;border-left:2px solid var(--p-accent);padding-left:7px}',
+      '.dsp-foot{display:flex;align-items:center;gap:8px;padding:7px 11px;border-top:1px solid var(--p-line);color:var(--p-sub);font-size:10.5px}',
+      '.dsp-link{cursor:pointer;color:var(--p-accent);text-decoration:none}',
       '.dsp-link:hover{text-decoration:underline}',
       '.dsp-input{display:none;padding:0 11px 10px}',
       '.dsp-input.on{display:block}',
-      '.dsp-input textarea{width:100%;height:64px;background:#0b1420;color:#cfe0f2;border:1px solid rgba(96,150,220,.25);',
+      '.dsp-input textarea{width:100%;height:64px;background:var(--p-card);color:var(--p-fg);border:1px solid var(--p-line);',
       'border-radius:7px;padding:6px 7px;font:11.5px/1.5 inherit;resize:vertical;box-sizing:border-box}',
-      '.dsp-input button{margin-top:5px;background:#17314f;padding:4px 10px;border-radius:6px;',
-      'border:1px solid rgba(96,150,220,.35);color:#bcd6f0;cursor:pointer;font-size:11px}'
+      '.dsp-input button{margin-top:5px;background:var(--p-card);padding:4px 10px;border-radius:6px;',
+      'border:1px solid var(--p-line);color:var(--p-fg);cursor:pointer;font-size:11px}'
     ].join('')
     document.head.appendChild(s)
   }
@@ -176,6 +178,22 @@
     return (0.299 * parseFloat(p[0]) + 0.587 * parseFloat(p[1]) + 0.114 * parseFloat(p[2])) / 255
   }
 
+  /* 读宿主明暗：决定面板配色（html.dsp-light）和页面背景的墨色（paper / graphite） */
+  function syncHostTheme() {
+    var light = false
+    try {
+      var root = document.getElementById('root') || document.body
+      var c1 = window.getComputedStyle(root).backgroundColor
+      light = lumOf(c1) > 0.55
+      if (!light) {
+        var c2 = window.getComputedStyle(document.body).backgroundColor
+        if (opaque(c2)) light = lumOf(c2) > 0.55
+      }
+    } catch (e) {}
+    bgPal = light ? 'paper' : 'graphite'
+    try { document.documentElement.classList.toggle('dsp-light', light) } catch (x) {}
+    return light
+  }
   function mountBg() {
     var host = findBgHost()
     var bgc = ''
@@ -193,9 +211,9 @@
       try { bgc = window.getComputedStyle(document.body).backgroundColor } catch (x) {}
       bgDiag = '背景宿主 body(兜底) bg=' + bgc
     }
-    var light = theme !== 'liquid' && lumOf(bgc) > 0.55
+    var light = syncHostTheme()
     bgCanvas.classList[light ? 'add' : 'remove']('light')
-    bgDiag += light ? ' 浅色主题' : ' 深色主题'
+    bgDiag += light ? ' 明底·浅蓝白' : ' 暗底·灰黑'
   }
 
   function build() {
@@ -220,7 +238,7 @@
       '<span class="dsp-sub">等待回答…</span><span class="dsp-rl" title="重载挂件（改完代码不用重启）">↻</span>',
       '<span class="dsp-x" title="收起">✕</span></div>',
       '<div class="dsp-body">',
-      '  <div class="dsp-sec"><h4>基元星图 <span>每个点 = 一簇义原</span><em id="dsp-theme">脉冲</em><em id="dsp-bgtoggle">背景模式</em></h4>',
+      '  <div class="dsp-sec"><h4>基元星图 <span>每个点 = 一簇义原</span><em id="dsp-bgtoggle">背景模式</em></h4>',
       '    <canvas class="dsp-cv" id="dsp-brain" height="220"></canvas></div>',
       '  <div class="dsp-sec"><h4>基元流 <span>义原激活曲线</span></h4>',
       '    <canvas class="dsp-cv" id="dsp-eeg" height="150"></canvas></div>',
@@ -387,9 +405,7 @@
 
   /* 主题切换：液态时面板里的星图改成浅纸底，背景画布也不用反相了 */
   function applyTheme() {
-    var liquid = theme === 'liquid'
-    try { document.documentElement.classList.toggle('dsp-liquid', liquid) } catch (x) {}
-    if (bgOn) mountBg()
+    try { syncHostTheme() } catch (e) {}
   }
 
   function setBackground(on) {
@@ -487,6 +503,7 @@
         if (s && s.wv && String(s.wv) !== String(SELF_V) && lsGet('dshPulseAutoReload', '0') === '1') {
           if (canAutoReload()) { reloadWidget(s.wv); return }
         }
+        try { syncHostTheme() } catch (e2) {}
         var changed = s && s.seq !== state.seq && s.text
         state = s || state
         if (subEl) {
@@ -668,6 +685,14 @@
     return DUST
   }
 
+  /* 三种底色下各有一套墨色：面板永远是霓虹蓝白，页面背景按宿主明暗取「浅蓝白」或「灰黑」 */
+  var PAL = {
+    neon: { line: [104, 158, 216], dust: [138, 182, 230], node: [158, 202, 246], lit: [170, 224, 255], hot: [246, 252, 255], glow: [20, 52, 92] },
+    paper: { line: [96, 148, 206], dust: [128, 168, 214], node: [92, 140, 198], lit: [52, 112, 186], hot: [28, 78, 150], glow: [150, 180, 216] },
+    graphite: { line: [138, 146, 160], dust: [124, 132, 146], node: [152, 160, 174], lit: [180, 188, 200], hot: [208, 214, 224], glow: [120, 128, 142] }
+  }
+  var bgPal = 'neon'
+  function pal(which) { return PAL[which] || PAL.neon }
   /* 液态主题：浅底上画深墨，跟「深底画冷光」是同一套结构的反相版本 */
   function drawLiquid(ctx, pts, n, ce, D, held, t, bg, dpr, SK, W, H) {
     var INK = '38,42,52'
@@ -806,12 +831,13 @@
 
     // 冷光底：让节点从深色底里浮起来
     var g0 = ctx.createRadialGradient(W * 0.5, H * 0.46, 10 * dpr, W * 0.5, H * 0.5, Math.min(W, H) * 0.62)
-    g0.addColorStop(0, bg ? 'rgba(20,52,92,.30)' : 'rgba(20,48,84,.34)')
+    g0.addColorStop(0, bg ? 'rgba(' + P.glow[0] + ',' + P.glow[1] + ',' + P.glow[2] + ',.24)' : 'rgba(20,48,84,.34)')
     g0.addColorStop(0.6, 'rgba(10,26,48,.16)')
     g0.addColorStop(1, 'rgba(0,0,0,0)')
     ctx.fillStyle = g0
     ctx.fillRect(0, 0, W, H)
 
+    var P = bg ? pal(bgPal) : PAL.neon
     var pulse = 0.92 + 0.08 * Math.sin(t / 620)
 
     // 0) 静息微光：整体先浮一层，别是纯黑底
@@ -832,7 +858,7 @@
     for (var e = 0; e < ce.length; e += 2) {
       var a = ce[e], b = ce[e + 1]
       var d1 = (pts[a * 3 + 2] + pts[b * 3 + 2]) * 0.5
-      ctx.strokeStyle = 'rgba(104,158,216,' + ((bg ? 0.10 : 0.12) + 0.28 * d1).toFixed(3) + ')'
+      ctx.strokeStyle = 'rgba(' + P.line[0] + ',' + P.line[1] + ',' + P.line[2] + ',' + ((bg ? 0.10 : 0.12) + 0.28 * d1).toFixed(3) + ')'
       ctx.beginPath()
       ctx.moveTo(pts[a * 3], pts[a * 3 + 1])
       ctx.lineTo(pts[b * 3], pts[b * 3 + 1])
@@ -845,7 +871,7 @@
       var dz = D.dp[si]
       var rr = (0.95 + 0.95 * dz) * dpr
       var aa = bg ? 0.14 + 0.34 * dz : 0.24 + 0.48 * dz
-      ctx.fillStyle = 'rgba(138,182,230,' + aa.toFixed(3) + ')'
+      ctx.fillStyle = 'rgba(' + P.dust[0] + ',' + P.dust[1] + ',' + P.dust[2] + ',' + aa.toFixed(3) + ')'
       ctx.beginPath(); ctx.arc(D.px[si], D.py[si], rr, 0, 6.2832); ctx.fill()
     }
 
@@ -857,7 +883,7 @@
       var k = ord[oj], dp = pts[k * 3 + 2]
       var r0 = (1.8 + 2.3 * dp) * dpr * SK
       var a0 = bg ? 0.26 + 0.46 * dp : 0.38 + 0.62 * dp
-      ctx.fillStyle = 'rgba(158,202,246,' + a0.toFixed(3) + ')'
+      ctx.fillStyle = 'rgba(' + P.node[0] + ',' + P.node[1] + ',' + P.node[2] + ',' + a0.toFixed(3) + ')'
       ctx.beginPath(); ctx.arc(pts[k * 3], pts[k * 3 + 1], r0, 0, 6.2832); ctx.fill()
     }
 
@@ -870,7 +896,7 @@
       var s2 = Math.min(litArr[a2] || 0, litArr[b2] || 0)
       if (s2 < 0.10) continue
       var dd2 = (pts[a2 * 3 + 2] + pts[b2 * 3 + 2]) * 0.5
-      ctx.strokeStyle = 'rgba(170,224,255,' + (0.34 * s2 * pulse * (0.5 + 0.5 * dd2)).toFixed(3) + ')'
+      ctx.strokeStyle = 'rgba(' + P.lit[0] + ',' + P.lit[1] + ',' + P.lit[2] + ',' + (0.34 * s2 * pulse * (0.5 + 0.5 * dd2)).toFixed(3) + ')'
       ctx.lineWidth = (1.0 + 1.2 * s2) * dpr * (bg ? 1.2 : 1)
       ctx.beginPath()
       ctx.moveTo(pts[a2 * 3], pts[a2 * 3 + 1])
@@ -896,7 +922,7 @@
       gr.addColorStop(1, 'rgba(60,130,200,0)')
       ctx.fillStyle = gr
       ctx.beginPath(); ctx.arc(pts[kh * 3], pts[kh * 3 + 1], r * 4.2, 0, 6.2832); ctx.fill()
-      ctx.fillStyle = 'rgba(246,252,255,' + (0.55 + 0.45 * v).toFixed(3) + ')'
+      ctx.fillStyle = 'rgba(' + P.hot[0] + ',' + P.hot[1] + ',' + P.hot[2] + ',' + (0.55 + 0.45 * v).toFixed(3) + ')'
       ctx.beginPath(); ctx.arc(pts[kh * 3], pts[kh * 3 + 1], Math.max(0.6, r * 0.34), 0, 6.2832); ctx.fill()
     }
     ctx.restore()
