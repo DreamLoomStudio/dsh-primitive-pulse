@@ -58,7 +58,7 @@
   /* 单主题：面板明亮，只有基元星图卡保留暗底 */
   '#dsh-pulse-panel{--p-bg:rgba(252,253,255,.98);--p-fg:#16202e;--p-dim:#5c6b7d;--p-head:#22303f;--p-sub:#748393;',
   '--p-line:rgba(40,70,110,.16);--p-accent:#2b6fd0;--p-card:#eef3fa;--p-headd:linear-gradient(180deg,#eef3fa,#f8fafd);--p-bar1:#9dc0e8;--p-bar2:#2b6fd0}',
-  'position:fixed;right:18px;bottom:160px;width:404px;max-height:calc(100vh - 220px);',
+  '#dsh-pulse-panel{position:fixed;right:18px;bottom:160px;width:404px;max-height:calc(100vh - 220px);',
       'background:var(--p-bg);border:1px solid var(--p-line);border-radius:14px;',
       'box-shadow:0 18px 50px rgba(30,50,80,.22);z-index:' + Z + ';display:none;flex-direction:column;',
       'font:12px/1.5 -apple-system,"Segoe UI",system-ui,"Microsoft YaHei",sans-serif;color:var(--p-fg);overflow:hidden}',
