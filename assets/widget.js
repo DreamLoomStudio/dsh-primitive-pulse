@@ -55,12 +55,12 @@
       'mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,#000 56%,transparent 100%)}',
       '#dsh-pulse-bg.on{opacity:.62}',
       '#dsh-pulse-bg.light.on{opacity:.50}',
-      /* 面板只有一个主题：暗底 + 霓虹蓝白。变量留着是为了以后改色方便 */
-      '#dsh-pulse-panel{--p-bg:rgba(9,14,22,.97);--p-fg:#cfe0f2;--p-dim:#7f97b4;--p-head:#8fb3d6;--p-sub:#5d7590;',
-      '--p-line:rgba(96,150,220,.16);--p-accent:#5aa4ff;--p-card:#0b1420;--p-headd:linear-gradient(180deg,rgba(30,52,80,.55),rgba(12,18,28,.2));--p-bar1:#2f6fb5;--p-bar2:#5aa4ff;',
-      'position:fixed;right:18px;bottom:160px;width:404px;max-height:calc(100vh - 220px);',
+  /* 单主题：面板明亮，只有基元星图卡保留暗底 */
+  '#dsh-pulse-panel{--p-bg:rgba(252,253,255,.98);--p-fg:#16202e;--p-dim:#5c6b7d;--p-head:#22303f;--p-sub:#748393;',
+  '--p-line:rgba(40,70,110,.16);--p-accent:#2b6fd0;--p-card:#eef3fa;--p-headd:linear-gradient(180deg,#eef3fa,#f8fafd);--p-bar1:#9dc0e8;--p-bar2:#2b6fd0}',
+  'position:fixed;right:18px;bottom:160px;width:404px;max-height:calc(100vh - 220px);',
       'background:var(--p-bg);border:1px solid var(--p-line);border-radius:14px;',
-      'box-shadow:0 18px 60px rgba(0,0,0,.62);z-index:' + Z + ';display:none;flex-direction:column;',
+      'box-shadow:0 18px 50px rgba(30,50,80,.22);z-index:' + Z + ';display:none;flex-direction:column;',
       'font:12px/1.5 -apple-system,"Segoe UI",system-ui,"Microsoft YaHei",sans-serif;color:var(--p-fg);overflow:hidden}',
       '#dsh-pulse-panel.on{display:flex}',
       '.dsp-head{display:flex;align-items:center;gap:8px;padding:9px 11px;border-bottom:1px solid rgba(96,150,220,.16);',
@@ -81,7 +81,9 @@
       '.dsp-sec h4 em.on{background:var(--p-accent);color:#fff}',
     /* 液态主题：面板里的星图改成浅纸底 */
     
-      'canvas.dsp-cv{width:100%;display:block;border-radius:8px;background:radial-gradient(circle at 50% 45%,rgba(22,38,58,.55),rgba(7,11,18,.9))}',
+      'canvas.dsp-cv{width:100%;display:block;border-radius:8px;background:radial-gradient(circle at 50% 45%,#12233a,#060b13)}',
+ 'canvas#dsp-eeg{background:linear-gradient(180deg,#f7fafd,#eaf1f8);border:1px solid rgba(40,70,110,.10)}',
+ '#dsh-pulse-panel .dsp-sec h4{color:#22303f}',
       '.dsp-fp{display:flex;align-items:center;gap:6px;margin:3px 0}',
       '.dsp-fp i{font-style:normal;width:74px;color:var(--p-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}',
       '.dsp-fp b{font-weight:400;height:7px;border-radius:3px;background:linear-gradient(90deg,var(--p-bar1),var(--p-bar2));min-width:2px}',
@@ -1015,7 +1017,7 @@
     var pw = W - L - R, ph = H - T - B
     var rh = ph / rows
 
-    ctx.strokeStyle = 'rgba(96,150,220,.16)'
+  ctx.strokeStyle = 'rgba(40,70,110,.13)'
     ctx.lineWidth = Math.max(0.5, dpr * 0.5)
     for (var r2 = 0; r2 < rows; r2++) {
       var by = T + rh * (r2 + 0.5)
@@ -1026,8 +1028,8 @@
 
     var N = replay.n
     var head = Math.max(2, Math.min(N, (replay.i + 1) * replay.step))
-    var colors = [[120, 180, 255], [150, 210, 235], [190, 245, 245], [220, 220, 255],
-      [250, 215, 180], [200, 230, 210], [235, 200, 240], [180, 210, 250]]
+    var colors = [[44, 104, 186], [26, 122, 142], [12, 138, 138], [86, 92, 196],
+      [186, 112, 34], [32, 132, 84], [154, 60, 164], [52, 96, 176]]
 
     for (var c = 0; c < rows; c++) {
       var series = replay.chans[c]
