@@ -81,14 +81,64 @@
   /* ---------- DOM ---------- */
   var btn, panel, subEl, footEl, capEl, bgCanvas
 
+  /* 找一个「铺满视口且有实心底色」的容器当背景宿主。
+     直接挂在 body 上会被应用自己画的不透明底色盖住 —— 因为负 z-index 的
+     画布只在最近的层叠上下文里生效，应用那层底色在它之上。
+     解法：把画布插进那个容器内部当第一个子节点，并给它 isolation:isolate
+     造出独立的层叠上下文，负 z-index 就能落在这层底色之上、内容之下。 */
+  function findBgHost() {
+    var root = document.getElementById('root') || document.body
+    var vw = window.innerWidth || 1200, vh = window.innerHeight || 800
+    var list = root.querySelectorAll('*')
+    var limit = Math.min(list.length, 6000)
+    for (var i = 0; i < limit; i++) {
+      var e = list[i]
+      var r = e.getBoundingClientRect()
+      if (r.width < vw * 0.95 || r.height < vh * 0.95) continue
+      var bg = ''
+      try { bg = window.getComputedStyle(e).backgroundColor } catch (x) {}
+      if (!bg || bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)') continue
+      return e
+    }
+    return null
+  }
+
+  var bgDiag = ''
+  function descOf(el) {
+    if (!el) return 'null'
+    var s = (el.tagName || '?').toLowerCase()
+    if (el.id) s += '#' + el.id
+    var cls = (el.className && String(el.className).trim()) ? String(el.className).trim().split(/\s+/)[0] : ''
+    if (cls) s += '.' + cls
+    return s
+  }
+
+  function mountBg() {
+    var host = findBgHost()
+    if (host) {
+      try { host.style.isolation = 'isolate' } catch (x) {}
+      if (host.firstChild) host.insertBefore(bgCanvas, host.firstChild)
+      else host.appendChild(bgCanvas)
+      var bgc = ''
+      try { bgc = window.getComputedStyle(host).backgroundColor } catch (x) {}
+      bgDiag = '背景宿主 ' + descOf(host) + ' bg=' + bgc
+      return
+    }
+    // 兜底：底色画在 body 上，那就在 body 内部造层叠上下文
+    try { document.body.style.isolation = 'isolate' } catch (x) {}
+    if (document.body.firstChild) document.body.insertBefore(bgCanvas, document.body.firstChild)
+    else document.body.appendChild(bgCanvas)
+    var bodyBg = ''
+    try { bodyBg = window.getComputedStyle(document.body).backgroundColor } catch (x) {}
+    bgDiag = '背景宿主 body(兜底) bg=' + bodyBg
+  }
+
   function build() {
     css()
 
     bgCanvas = document.createElement('canvas')
     bgCanvas.id = 'dsh-pulse-bg'
-    // 插到 body 最前面 + 负 z-index：它排在应用根节点之前，才能真的待在内容「后面」
-    if (document.body.firstChild) document.body.insertBefore(bgCanvas, document.body.firstChild)
-    else document.body.appendChild(bgCanvas)
+    mountBg()
 
     btn = document.createElement('div')
     btn.id = 'dsh-pulse-btn'
@@ -236,8 +286,10 @@
     var t = panel.querySelector('#dsp-bgtoggle')
     if (t) t.classList.toggle('on', bgOn)
     if (bgOn) {
+      mountBg()   // 应用可能重渲染过，宿主换了就重新贴一次
       fit(bgCanvas, window.innerHeight)
       ensureEngine(function () {})
+      if (footEl) footEl.textContent = bgDiag   // 诊断：开着背景时底栏告诉你它贴到哪了
     }
   }
 
