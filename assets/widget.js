@@ -53,6 +53,10 @@
       '-webkit-mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,#000 56%,transparent 100%);',
       'mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,#000 56%,transparent 100%)}',
       '#dsh-pulse-bg.on{opacity:.62}',
+      /* 浅色主题：星图本来是「白点亮墨底」，直接铺在白底上等于隐形。
+         invert + hue-rotate 把明度翻过来、色相留住 → 变成深蓝墨线，白底上才看得见。 */
+      '#dsh-pulse-bg.light{filter:invert(1) hue-rotate(180deg)}',
+      '#dsh-pulse-bg.light.on{opacity:.46}',
       '#dsh-pulse-panel{position:fixed;right:18px;bottom:160px;width:404px;max-height:calc(100vh - 220px);',
       'background:rgba(9,14,22,.97);border:1px solid rgba(96,150,220,.28);border-radius:14px;',
       'box-shadow:0 18px 60px rgba(0,0,0,.62);z-index:' + Z + ';display:none;flex-direction:column;',
@@ -138,24 +142,36 @@
     return s
   }
 
+  /* 底色亮不亮：决定星图用「照亮墨底」还是「墨照白底」 */
+  function lumOf(color) {
+    var m = /rgba?\(([^)]+)\)/.exec(color || '')
+    if (!m) return 0
+    var p = m[1].split(',')
+    var a = p.length > 3 ? parseFloat(p[3]) : 1
+    if (!(a >= 0.5)) return 0            // 半透明就当深底处理
+    return (0.299 * parseFloat(p[0]) + 0.587 * parseFloat(p[1]) + 0.114 * parseFloat(p[2])) / 255
+  }
+
   function mountBg() {
     var host = findBgHost()
+    var bgc = ''
     if (host) {
       try { host.style.isolation = 'isolate' } catch (x) {}
       if (host.firstChild) host.insertBefore(bgCanvas, host.firstChild)
       else host.appendChild(bgCanvas)
-      var bgc = ''
       try { bgc = window.getComputedStyle(host).backgroundColor } catch (x) {}
       bgDiag = '背景宿主 ' + descOf(host) + ' bg=' + bgc
-      return
+    } else {
+      // 兜底：底色画在 body 上，那就在 body 内部造层叠上下文
+      try { document.body.style.isolation = 'isolate' } catch (x) {}
+      if (document.body.firstChild) document.body.insertBefore(bgCanvas, document.body.firstChild)
+      else document.body.appendChild(bgCanvas)
+      try { bgc = window.getComputedStyle(document.body).backgroundColor } catch (x) {}
+      bgDiag = '背景宿主 body(兜底) bg=' + bgc
     }
-    // 兜底：底色画在 body 上，那就在 body 内部造层叠上下文
-    try { document.body.style.isolation = 'isolate' } catch (x) {}
-    if (document.body.firstChild) document.body.insertBefore(bgCanvas, document.body.firstChild)
-    else document.body.appendChild(bgCanvas)
-    var bodyBg = ''
-    try { bodyBg = window.getComputedStyle(document.body).backgroundColor } catch (x) {}
-    bgDiag = '背景宿主 body(兜底) bg=' + bodyBg
+    var light = lumOf(bgc) > 0.55
+    bgCanvas.classList[light ? 'add' : 'remove']('light')
+    bgDiag += light ? ' 浅色主题' : ' 深色主题'
   }
 
   function build() {
