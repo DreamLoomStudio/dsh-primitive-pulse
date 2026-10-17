@@ -130,6 +130,8 @@
         try { cs = window.getComputedStyle(e) } catch (x2) { continue }
         if (e.tagName === 'HTML') break
         if (!opaque(cs.backgroundColor)) continue
+        var rr = e.getBoundingClientRect()
+        if (rr.width * rr.height < vw * vh * 0.35) continue
         return e
       }
     }
@@ -192,83 +194,50 @@
     try { document.documentElement.classList.toggle('dsp-light', light) } catch (x9) {}
     return light
   }
-  /* ===== 背景层：独立 stage + 让页面底色让位 =====
-     之前把画布塞进「命中的那一层」里，只要它的某个祖先有 transform /
-     形成层叠上下文，position:fixed 就被那句话的盒子夹住，人根本看不到。
-     改成：body 下第一个子节点放一个覆盖全屏的 stage（fixed，z-index 0），
-     然后把「盖住整个视口的大块不透明底色」临时调成透明，
-     画布就落在页面底色之上、所有内容之下。关掉时原样还回去。 */
-  var stageEl = null
-  var clearedBg = []
+  /* ===== 背景层：贴在「真正画底色的那一层」里面，负 z-index =====
+     关键约束（踩过两次）：
+       1) 不能 position:fixed —— 应用里几乎每个滚动容器的祖先都带 transform，
+          fixed 会被那个祖先的盒子夹住，画布跑到看不见的地方。
+       2) 不能去清宿主的底色 —— 内容区的白色是宿主自己画的，清掉就露出
+          宿主的暗底，正文变成黑底黑字，整片废掉。
+     正确做法：把画布插成「命中层」的第一个子节点，画布用 absolute 撑满它，
+     z-index:-1，宿主 isolation:isolate。这样画布落在宿主自己的底色之上、
+     宿主的全部内容之下 —— 不破坏任何配色，也不需要改宿主的背景。 */
+  function fitHost(host) {
+    var r = null
+    try { r = host.getBoundingClientRect() } catch (x) {}
+    var h = (r && r.height > 40) ? r.height : window.innerHeight
+    fit(bgCanvas, h)
+  }
 
-  function ensureStage() {
-    if (stageEl && stageEl.parentNode) return stageEl
-    stageEl = document.createElement('div')
-    stageEl.id = 'dsh-pulse-stage'
-    stageEl.style.cssText = 'position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;'
+  function mountBg() {
+    var host = findBgHost() || document.body
+    try {
+      var cs = window.getComputedStyle(host)
+      if (cs.position === 'static') host.style.position = 'relative'
+      host.style.isolation = 'isolate'
+    } catch (x) {}
+    if (bgCanvas.parentNode !== host || host.firstChild !== bgCanvas) {
+      if (host.firstChild) host.insertBefore(bgCanvas, host.firstChild)
+      else host.appendChild(bgCanvas)
+    }
     bgCanvas.style.position = 'absolute'
     bgCanvas.style.left = '0'
     bgCanvas.style.top = '0'
     bgCanvas.style.width = '100%'
     bgCanvas.style.height = '100%'
-    stageEl.appendChild(bgCanvas)
-    if (document.body.firstChild) document.body.insertBefore(stageEl, document.body.firstChild)
-    else document.body.appendChild(stageEl)
-    return stageEl
-  }
-
-  /* 只挖「整屏级别」的底色（页面底、主容器底），不动消息气泡、卡片这类小面积底色 */
-  function clearPagePaint() {
-    var vw = window.innerWidth || 1200, vh = window.innerHeight || 800
-    var vArea = vw * vh
-    var list = []
-    try { list = document.elementsFromPoint(vw / 2, vh * 0.35) || [] } catch (x) {}
-    var picked = []
-    for (var i = 0; i < list.length; i++) {
-      var el = list[i]
-      if (!el || el.tagName === 'HTML' || el === stageEl) continue
-      var cs = null
-      try { cs = window.getComputedStyle(el) } catch (x2) { continue }
-      if (!opaque(cs.backgroundColor)) continue
-      var r = el.getBoundingClientRect()
-      if (r.width * r.height < vArea * 0.55) continue      // 小面积的别动
-      picked.push(el)
-    }
-    for (var k = 0; k < picked.length; k++) {
-      var e = picked[k]
-      if (e.getAttribute('data-dsp-bgcleared') === '1') continue
-      e.setAttribute('data-dsp-bgcleared', '1')
-      e.setAttribute('data-dsp-bgold', e.style.backgroundColor || '')
-      e.style.backgroundColor = 'transparent'
-      clearedBg.push(e)
-    }
-    return picked.length
-  }
-
-  function restorePagePaint() {
-    for (var i = 0; i < clearedBg.length; i++) {
-      var e = clearedBg[i]
-      e.style.backgroundColor = e.getAttribute('data-dsp-bgold') || ''
-      e.removeAttribute('data-dsp-bgcleared')
-      e.removeAttribute('data-dsp-bgold')
-    }
-    clearedBg = []
-  }
-
-  function mountBg() {
-    ensureStage()
-    var n = clearPagePaint()
+    bgCanvas.style.zIndex = '-1'
+    fitHost(host)
     var light = syncHostTheme()
     bgPal = 'paper'
     bgCanvas.classList[light ? 'add' : 'remove']('light')
-    bgDiag = '背景层 stage · 让位 ' + n + ' 层' + (light ? ' 明底·浅蓝白' : ' 暗底')
+    var bgc = ''
+    try { bgc = window.getComputedStyle(host).backgroundColor } catch (x) {}
+    bgDiag = '背景贴 ' + descOf(host) + ' bg=' + bgc + (light ? ' 明底·浅蓝白' : ' 暗底')
     return light
   }
 
-  function unmountBg() {
-    restorePagePaint()
-  }
-
+  function unmountBg() {}
   function build() {
     css()
 
@@ -476,7 +445,6 @@
     if (!bgOn) { unmountBg() }
     if (bgOn) {
       mountBg()   // 应用可能重渲染过，宿主换了就重新贴一次
-      fit(bgCanvas, window.innerHeight)
       ensureEngine(function () {})
       if (footEl) footEl.textContent = bgDiag   // 诊断：开着背景时底栏告诉你它贴到哪了
     }
