@@ -55,15 +55,13 @@
       'mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,#000 56%,transparent 100%)}',
       '#dsh-pulse-bg.on{opacity:.62}',
       '#dsh-pulse-bg.light.on{opacity:.50}',
-      /* 面板配色走变量：默认暗色，html.dsp-light 时整体翻成明底暗字（星图卡仍保持暗底） */
+      /* 面板只有一个主题：暗底 + 霓虹蓝白。变量留着是为了以后改色方便 */
       '#dsh-pulse-panel{--p-bg:rgba(9,14,22,.97);--p-fg:#cfe0f2;--p-dim:#7f97b4;--p-head:#8fb3d6;--p-sub:#5d7590;',
       '--p-line:rgba(96,150,220,.16);--p-accent:#5aa4ff;--p-card:#0b1420;--p-headd:linear-gradient(180deg,rgba(30,52,80,.55),rgba(12,18,28,.2));--p-bar1:#2f6fb5;--p-bar2:#5aa4ff;',
       'position:fixed;right:18px;bottom:160px;width:404px;max-height:calc(100vh - 220px);',
       'background:var(--p-bg);border:1px solid var(--p-line);border-radius:14px;',
       'box-shadow:0 18px 60px rgba(0,0,0,.62);z-index:' + Z + ';display:none;flex-direction:column;',
       'font:12px/1.5 -apple-system,"Segoe UI",system-ui,"Microsoft YaHei",sans-serif;color:var(--p-fg);overflow:hidden}',
-      'html.dsp-light #dsh-pulse-panel{--p-bg:rgba(252,253,255,.98);--p-fg:#1e2a38;--p-dim:#5a6b7d;--p-head:#33506e;--p-sub:#66788a;',
-      '--p-line:rgba(40,70,110,.14);--p-accent:#2b6fd0;--p-card:#f2f5fa;--p-bar1:#7fa8dd;--p-bar2:#2b6fd0;--p-headd:linear-gradient(180deg,rgba(226,233,244,.75),rgba(246,249,253,.35));box-shadow:0 18px 50px rgba(30,50,80,.18)}',
       '#dsh-pulse-panel.on{display:flex}',
       '.dsp-head{display:flex;align-items:center;gap:8px;padding:9px 11px;border-bottom:1px solid rgba(96,150,220,.16);',
       'cursor:move;user-select:none;background:var(--p-headd)}',
@@ -82,7 +80,6 @@
       'border-radius:5px;padding:1px 6px}',
       '.dsp-sec h4 em.on{background:var(--p-accent);color:#fff}',
     /* 液态主题：面板里的星图改成浅纸底 */
-    'html.dsp-light #dsp-eeg{background:#0b1420;filter:invert(1) hue-rotate(180deg)}',
     
       'canvas.dsp-cv{width:100%;display:block;border-radius:8px;background:radial-gradient(circle at 50% 45%,rgba(22,38,58,.55),rgba(7,11,18,.9))}',
       '.dsp-fp{display:flex;align-items:center;gap:6px;margin:3px 0}',
@@ -178,7 +175,7 @@
     return (0.299 * parseFloat(p[0]) + 0.587 * parseFloat(p[1]) + 0.114 * parseFloat(p[2])) / 255
   }
 
-  /* 读宿主明暗：决定面板配色（html.dsp-light）和页面背景的墨色（paper / graphite） */
+  /* 背景墨色固定用 paper（浅蓝白），不再跟随宿主明暗 —— 只保留一个主题 */
   function syncHostTheme() {
     var light = false
     try {
@@ -190,8 +187,7 @@
         if (opaque(c2)) light = lumOf(c2) > 0.55
       }
     } catch (e) {}
-    bgPal = light ? 'paper' : 'graphite'
-    try { document.documentElement.classList.toggle('dsp-light', light) } catch (x) {}
+    bgPal = 'paper'
     return light
   }
   function mountBg() {
@@ -213,7 +209,7 @@
     }
     var light = syncHostTheme()
     bgCanvas.classList[light ? 'add' : 'remove']('light')
-    bgDiag += light ? ' 明底·浅蓝白' : ' 暗底·灰黑'
+    bgDiag += light ? ' 明底·浅蓝白' : ' 暗底'
   }
 
   function build() {
@@ -414,7 +410,7 @@
     bgCanvas.classList.toggle('on', bgOn)
     // 不依赖 CSS 类：直接写行内样式，避免被宿主的样式覆盖或类名没生效
     var isLight = false
-    try { isLight = document.documentElement.classList.contains('dsp-light') } catch (e4) {}
+    isLight = (bgPal === 'paper')
     bgCanvas.style.opacity = bgOn ? (isLight ? '0.92' : '0.72') : '0'
     bgCanvas.style.display = bgOn ? 'block' : 'none'
     bgCanvas.setAttribute('data-bg', bgOn ? '1' : '0')
