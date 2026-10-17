@@ -65,6 +65,7 @@
       '#dsh-pulse-panel.on{display:flex}',
       '.dsp-head{display:flex;align-items:center;gap:8px;padding:9px 11px;border-bottom:1px solid rgba(96,150,220,.16);',
       'cursor:move;user-select:none;background:var(--p-headd)}',
+  '/* —— 跟随主题：只换外框、标题、指纹卡、底栏；两块发光画布（星图 / 基元流）钉死暗底 —— */ html.dsp-light #dsh-pulse-panel{--p-bg:rgba(255,255,255,.97);--p-fg:#1b2634;--p-dim:#5d6b7c;--p-sub:#33414f;--p-head:rgba(238,243,250,.96);--p-line:rgba(40,70,110,.14);--p-accent:#2b6fd0;--p-card:#eef3fa;--p-headd:linear-gradient(180deg,rgba(226,233,244,.75),rgba(246,249,253,.35));--p-bar1:#7fa8dd;--p-bar2:#2b6fd0;box-shadow:0 18px 50px rgba(30,50,80,.18)} html.dsp-light #dsh-pulse-panel #dsp-brain,html.dsp-light #dsh-pulse-panel #dsp-eeg{background:#0b1420;border-color:rgba(96,150,220,.18)} html.dsp-light #dsh-pulse-panel #dsp-eeg{background:#0d1726}',
       '.dsp-dot{width:7px;height:7px;border-radius:50%;background:#4ea1ff;box-shadow:0 0 8px #4ea1ff}',
       '.dsp-title{font-weight:600;letter-spacing:.04em;color:var(--p-fg)}',
       '.dsp-sub{color:var(--p-dim);font-size:11px;margin-left:auto;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
@@ -188,28 +189,84 @@
       }
     } catch (e) {}
     bgPal = 'paper'
+    try { document.documentElement.classList.toggle('dsp-light', light) } catch (x9) {}
     return light
   }
-  function mountBg() {
-    var host = findBgHost()
-    var bgc = ''
-    if (host) {
-      try { host.style.isolation = 'isolate' } catch (x) {}
-      if (host.firstChild) host.insertBefore(bgCanvas, host.firstChild)
-      else host.appendChild(bgCanvas)
-      try { bgc = window.getComputedStyle(host).backgroundColor } catch (x) {}
-      bgDiag = '背景宿主 ' + descOf(host) + ' bg=' + bgc
-    } else {
-      // 兜底：底色画在 body 上，那就在 body 内部造层叠上下文
-      try { document.body.style.isolation = 'isolate' } catch (x) {}
-      if (document.body.firstChild) document.body.insertBefore(bgCanvas, document.body.firstChild)
-      else document.body.appendChild(bgCanvas)
-      try { bgc = window.getComputedStyle(document.body).backgroundColor } catch (x) {}
-      bgDiag = '背景宿主 body(兜底) bg=' + bgc
+  /* ===== 背景层：独立 stage + 让页面底色让位 =====
+     之前把画布塞进「命中的那一层」里，只要它的某个祖先有 transform /
+     形成层叠上下文，position:fixed 就被那句话的盒子夹住，人根本看不到。
+     改成：body 下第一个子节点放一个覆盖全屏的 stage（fixed，z-index 0），
+     然后把「盖住整个视口的大块不透明底色」临时调成透明，
+     画布就落在页面底色之上、所有内容之下。关掉时原样还回去。 */
+  var stageEl = null
+  var clearedBg = []
+
+  function ensureStage() {
+    if (stageEl && stageEl.parentNode) return stageEl
+    stageEl = document.createElement('div')
+    stageEl.id = 'dsh-pulse-stage'
+    stageEl.style.cssText = 'position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;'
+    bgCanvas.style.position = 'absolute'
+    bgCanvas.style.left = '0'
+    bgCanvas.style.top = '0'
+    bgCanvas.style.width = '100%'
+    bgCanvas.style.height = '100%'
+    stageEl.appendChild(bgCanvas)
+    if (document.body.firstChild) document.body.insertBefore(stageEl, document.body.firstChild)
+    else document.body.appendChild(stageEl)
+    return stageEl
+  }
+
+  /* 只挖「整屏级别」的底色（页面底、主容器底），不动消息气泡、卡片这类小面积底色 */
+  function clearPagePaint() {
+    var vw = window.innerWidth || 1200, vh = window.innerHeight || 800
+    var vArea = vw * vh
+    var list = []
+    try { list = document.elementsFromPoint(vw / 2, vh * 0.35) || [] } catch (x) {}
+    var picked = []
+    for (var i = 0; i < list.length; i++) {
+      var el = list[i]
+      if (!el || el.tagName === 'HTML' || el === stageEl) continue
+      var cs = null
+      try { cs = window.getComputedStyle(el) } catch (x2) { continue }
+      if (!opaque(cs.backgroundColor)) continue
+      var r = el.getBoundingClientRect()
+      if (r.width * r.height < vArea * 0.55) continue      // 小面积的别动
+      picked.push(el)
     }
+    for (var k = 0; k < picked.length; k++) {
+      var e = picked[k]
+      if (e.getAttribute('data-dsp-bgcleared') === '1') continue
+      e.setAttribute('data-dsp-bgcleared', '1')
+      e.setAttribute('data-dsp-bgold', e.style.backgroundColor || '')
+      e.style.backgroundColor = 'transparent'
+      clearedBg.push(e)
+    }
+    return picked.length
+  }
+
+  function restorePagePaint() {
+    for (var i = 0; i < clearedBg.length; i++) {
+      var e = clearedBg[i]
+      e.style.backgroundColor = e.getAttribute('data-dsp-bgold') || ''
+      e.removeAttribute('data-dsp-bgcleared')
+      e.removeAttribute('data-dsp-bgold')
+    }
+    clearedBg = []
+  }
+
+  function mountBg() {
+    ensureStage()
+    var n = clearPagePaint()
     var light = syncHostTheme()
+    bgPal = 'paper'
     bgCanvas.classList[light ? 'add' : 'remove']('light')
-    bgDiag += light ? ' 明底·浅蓝白' : ' 暗底'
+    bgDiag = '背景层 stage · 让位 ' + n + ' 层' + (light ? ' 明底·浅蓝白' : ' 暗底')
+    return light
+  }
+
+  function unmountBg() {
+    restorePagePaint()
   }
 
   function build() {
@@ -399,7 +456,7 @@
     cv.height = Math.round(cssH * dpr)
   }
 
-  /* 主题切换：液态时面板里的星图改成浅纸底，背景画布也不用反相了 */
+  /* 跟随宿主明暗：只影响面板外框配色，两块发光画布固定暗底 */
   function applyTheme() {
     try { syncHostTheme() } catch (e) {}
   }
@@ -416,6 +473,7 @@
     bgCanvas.setAttribute('data-bg', bgOn ? '1' : '0')
     var t = panel.querySelector('#dsp-bgtoggle')
     if (t) t.classList.toggle('on', bgOn)
+    if (!bgOn) { unmountBg() }
     if (bgOn) {
       mountBg()   // 应用可能重渲染过，宿主换了就重新贴一次
       fit(bgCanvas, window.innerHeight)
