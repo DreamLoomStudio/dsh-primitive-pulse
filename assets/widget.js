@@ -256,7 +256,6 @@
       + '<path d="M3 13h3l2-5 3 10 2.5-7 2 4H21" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     document.body.appendChild(btn)
     restoreBtnPos()
-    warmEngine()
 
     panel = document.createElement('div')
     panel.id = 'dsh-pulse-panel'
@@ -294,7 +293,9 @@
       if (!v) return
       ensureEngine(function () { analyze(v, '粘贴') })
     })
-    var bgT = panel.querySelector('#dsp-boardbtn')
+    warmEngine()
+
+  var bgT = panel.querySelector('#dsp-boardbtn')
     bgT.addEventListener('click', function (e) {
       e.stopPropagation()
       toggleBoard()
@@ -471,6 +472,19 @@
     boardOn = true
     var b = panel.querySelector('#dsp-boardbtn')
     if (b) b.classList.add('on')
+    var fr0 = boardEl.querySelector('#dsp-boardframe')
+    if (fr0 && !fr0._dspWired) { fr0._dspWired = 1; fr0.addEventListener('load', pushBoard) }
+    setTimeout(pushBoard, 60)
+  }
+
+  /* 把面板正在看的这段文本推给看板里的 iframe，让它跟着实际变 */
+  function pushBoard() {
+    if (!boardEl) return
+    var fr = boardEl.querySelector('#dsp-boardframe')
+    if (!fr || !fr.contentWindow) return
+    var txt = (state && state.text) ? state.text : ''
+    if (!txt) return
+    try { fr.contentWindow.postMessage({ __dspPulse: 1, text: txt, seq: state.seq }, '*') } catch (e) {}
   }
 
   function closeBoard() {
@@ -585,6 +599,7 @@
             : '等待回答…'
         }
         if (changed || force) analyze(state.text, '会话')
+      pushBoard()
       })
       .catch(function () {})
   }

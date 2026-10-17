@@ -171,5 +171,16 @@
 <script src="/dsh-pulse/board-samples.js"></script>
 <script src="/dsh-pulse/core.js"></script>
 <script src="/dsh-pulse/board-app.js"></script>
+<script>
+/* 宿主面板注入：把「当前这段回答」推进来看板，跟着实际变 */
+window.addEventListener('message', function (e) {
+  var d = e.data || {};
+  if (!d || d.__dspPulse !== 1) return;
+  if (typeof d.text !== 'string' || !d.text.trim()) return;
+  var ta = document.getElementById('input');
+  if (ta) ta.value = d.text;
+  try { if (typeof window.run === 'function') window.run(d.text); } catch (err) {}
+});
+</script>
 </body>
 </html>
