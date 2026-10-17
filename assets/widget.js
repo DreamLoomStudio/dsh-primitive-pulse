@@ -314,7 +314,12 @@
       panel.style.left = Math.max(6, Math.min(window.innerWidth - 200, pdrag.r.left + e.clientX - pdrag.x)) + 'px'
       panel.style.top = Math.max(6, Math.min(window.innerHeight - 100, pdrag.r.top + e.clientY - pdrag.y)) + 'px'
     })
-    window.addEventListener('mouseup', function () { pdrag = null })
+    window.addEventListener('mouseup', function () {
+      if (!pdrag) return
+      pdrag = null
+      var r = panel.getBoundingClientRect()
+      lsSet('dshPulsePanel', JSON.stringify({ l: Math.round(r.left), t: Math.round(r.top) }))
+    })
 
     window.addEventListener('resize', function () {
       fit(bgCanvas, window.innerHeight)
@@ -326,6 +331,21 @@
     fit(panel.querySelector('#dsp-brain'), 220)
     fit(panel.querySelector('#dsp-eeg'), 150)
     fit(bgCanvas, window.innerHeight)
+
+    // 面板位置也记住：热更/重启后不再甩回右边
+    var savedPos = ''
+    try { savedPos = lsGet('dshPulsePanel', '') } catch (e0) { savedPos = '' }
+    if (savedPos) {
+      try {
+        var sp = JSON.parse(savedPos)
+        if (sp && isFinite(sp.l) && isFinite(sp.t)) {
+          panel.style.right = 'auto'
+          panel.style.bottom = 'auto'
+          panel.style.left = Math.max(6, Math.min(window.innerWidth - 220, sp.l)) + 'px'
+          panel.style.top = Math.max(6, Math.min(window.innerHeight - 120, sp.t)) + 'px'
+        }
+      } catch (e1) {}
+    }
 
     // 热更会重建 DOM：面板开合状态从 localStorage 恢复，别每次跳回小球
     // （必须放在 panel 建完之后，否则一次 ReferenceError 就能把整个 build 打死 —— 球会变成死的）
@@ -462,8 +482,9 @@
     fetch(BASE + '/state', { headers: { accept: 'application/json' } })
       .then(function (r) { return r.json() })
       .then(function (s) {
-        // 服务端报的 widget.js mtime 与我加载时的 ?v= 不一致 → 磁盘上已经是新版，自动换掉自己
-        if (s && s.wv && String(s.wv) !== String(SELF_V)) {
+        // 自动热更默认关掉：改代码时它会每轮重建面板（画面闪烁 + 把拖好的位置弹回右边）。
+        // 只用右上角 ↻ 手动换版本；确实要自动，把 dshPulseAutoReload 设成 '1'。
+        if (s && s.wv && String(s.wv) !== String(SELF_V) && lsGet('dshPulseAutoReload', '0') === '1') {
           if (canAutoReload()) { reloadWidget(s.wv); return }
         }
         var changed = s && s.seq !== state.seq && s.text
