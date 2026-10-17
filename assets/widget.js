@@ -8,6 +8,19 @@
   'use strict'
   if (window.__dshPulseLoaded) return
   window.__dshPulseLoaded = true
+  /* 代际令牌：面板上的 ↻ 重载时，旧实例的 rAF / 轮询要能自杀，
+     否则重载几次会有好几条循环在画已经摘掉的 canvas。 */
+  var GEN = window.__dshPulseGen = (window.__dshPulseGen || 0) + 1
+  function dead() { return window.__dshPulseDead === GEN }
+  window.__dshPulseStop = function () { window.__dshPulseDead = GEN }
+  /* 记录自己是哪个版本的脚本（服务端注入时会带 ?v=<mtime>），轮询时跟磁盘上的 mtime 对账 */
+  var SELF_V = (function () {
+    try {
+      var src = (document.currentScript && document.currentScript.src) || ''
+      var m = /[?&]v=(\d+)/.exec(src)
+      return m ? m[1] : ''
+    } catch (e) { return '' }
+  })()
 
   var BASE = '/dsh-pulse'
   var Z = 2147483000
@@ -51,6 +64,8 @@
       '.dsp-title{font-weight:600;letter-spacing:.04em;color:#e6f1ff}',
       '.dsp-sub{color:#7f97b4;font-size:11px;margin-left:auto;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.dsp-x{cursor:pointer;color:#7f97b4;font-size:15px;line-height:1;padding:0 2px}',
+    '.dsp-rl{cursor:pointer;color:#7f97b4;font-size:14px;line-height:1;padding:0 4px;margin-left:2px}',
+    '.dsp-rl:hover{color:#8fc4ff;transform:rotate(180deg);transition:transform .3s}',
       '.dsp-x:hover{color:#e6f1ff}',
       '.dsp-body{padding:8px 11px 11px;overflow:auto}',
       '.dsp-sec{margin-top:9px}',
@@ -89,18 +104,28 @@
   function findBgHost() {
     var root = document.getElementById('root') || document.body
     var vw = window.innerWidth || 1200, vh = window.innerHeight || 800
+    var cx = vw / 2, cy = vh / 2
+    var vArea = vw * vh
     var list = root.querySelectorAll('*')
-    var limit = Math.min(list.length, 6000)
+    var limit = Math.min(list.length, 8000)
+    var best = null, bestArea = Infinity
     for (var i = 0; i < limit; i++) {
       var e = list[i]
+      if (e === bgCanvas) continue
       var r = e.getBoundingClientRect()
-      if (r.width < vw * 0.95 || r.height < vh * 0.95) continue
-      var bg = ''
-      try { bg = window.getComputedStyle(e).backgroundColor } catch (x) {}
+      if (r.width < 8 || r.height < 8) continue
+      // 只看盖住「屏幕中心」的层 —— 那才是真正挡住脑图的那些底色
+      if (cx < r.left || cx > r.right || cy < r.top || cy > r.bottom) continue
+      var bg = '', cs = null
+      try { cs = window.getComputedStyle(e); bg = cs.backgroundColor } catch (x) {}
       if (!bg || bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)') continue
-      return e
+      // 带 transform/filter 的容器会让 position:fixed 退化成相对它定位 → 画布会跟着滚
+      if (cs && (cs.transform !== 'none' || cs.filter !== 'none' || cs.perspective !== 'none')) continue
+      var area = r.width * r.height
+      if (area < vArea * 0.30) continue          // 太小的块（文字/徽标）不算面板
+      if (area < bestArea) { bestArea = area; best = e }   // 取最深的那个面板
     }
-    return null
+    return best
   }
 
   var bgDiag = ''
@@ -152,7 +177,8 @@
     panel.id = 'dsh-pulse-panel'
     panel.innerHTML = [
       '<div class="dsp-head"><span class="dsp-dot"></span><span class="dsp-title">语义脉冲</span>',
-      '<span class="dsp-sub">等待回答…</span><span class="dsp-x" title="收起">✕</span></div>',
+      '<span class="dsp-sub">等待回答…</span><span class="dsp-rl" title="重载挂件（改完代码不用重启）">↻</span>',
+      '<span class="dsp-x" title="收起">✕</span></div>',
       '<div class="dsp-body">',
       '  <div class="dsp-sec"><h4>基元星图 <span>每个点 = 一簇义原</span><em id="dsp-bgtoggle">背景模式</em></h4>',
       '    <canvas class="dsp-cv" id="dsp-brain" height="220"></canvas></div>',
@@ -173,6 +199,7 @@
     capEl = panel.querySelector('#dsp-cap')
 
     panel.querySelector('.dsp-x').addEventListener('click', toggle)
+    panel.querySelector('.dsp-rl').addEventListener('click', reloadWidget)
     panel.querySelector('#dsp-paste').addEventListener('click', function () {
       panel.querySelector('#dsp-input').classList.toggle('on')
     })
@@ -353,6 +380,8 @@
     fetch(BASE + '/state', { headers: { accept: 'application/json' } })
       .then(function (r) { return r.json() })
       .then(function (s) {
+        // 服务端报的 widget.js mtime 与我加载时的 ?v= 不一致 → 磁盘上已经是新版，自动换掉自己
+        if (s && s.wv && String(s.wv) !== String(SELF_V)) { reloadWidget(s.wv); return }
         var changed = s && s.seq !== state.seq && s.text
         state = s || state
         if (subEl) {
@@ -451,6 +480,7 @@
   }
 
   function tick(t) {
+    if (dead()) return
     requestAnimationFrame(tick)
     if (t - lastTick < 33) return
     lastTick = t
@@ -769,11 +799,31 @@
     if (!document.body) return setTimeout(boot, 60)
     build()
     requestAnimationFrame(tick)
-    setInterval(function () { poll(false) }, 2000)
+    setInterval(function () { if (dead()) return; poll(false) }, 2000)
     window.addEventListener('keydown', function (e) {
       if (e.ctrlKey && e.shiftKey && (e.key === 'P' || e.key === 'p')) { e.preventDefault(); toggle() }
       if (e.key === 'Escape' && opened) toggle()
     })
+  }
+
+  /* 面板右上角的 ↻：拔掉旧实例、清掉旧 DOM，用时间戳重新拉一份 widget.js。
+     改完代码点一下就行，不用重启宿主、也不指望浏览器刷新。 */
+  function reloadWidget(ver) {
+    try { window.__dshPulseStop && window.__dshPulseStop() } catch (x) {}
+    window.__dshPulseLoaded = false
+    ;['dsh-pulse-btn', 'dsh-pulse-panel', 'dsh-pulse-bg'].forEach(function (id) {
+      var e = document.getElementById(id)
+      if (e && e.parentNode) e.parentNode.removeChild(e)
+    })
+    var st = document.querySelectorAll('style[data-dsh-pulse]')
+    for (var i = 0; i < st.length; i++) st[i].parentNode.removeChild(st[i])
+    var oldScript = document.querySelector('script[data-dsh-pulse]')
+    var host = (oldScript && oldScript.parentNode) || document.body
+    if (oldScript && oldScript.parentNode) oldScript.parentNode.removeChild(oldScript)
+    var s = document.createElement('script')
+    s.src = BASE + '/widget.js?v=' + (ver || Date.now()) + '&t=' + Date.now()
+    s.setAttribute('data-dsh-pulse', '1')
+    host.appendChild(s)
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot)
