@@ -35,7 +35,7 @@
       '#dsh-pulse-btn:hover{border-color:rgba(150,205,255,.75)}',
       '#dsh-pulse-btn.dragging{cursor:grabbing;transform:scale(1.04)}',
       '#dsh-pulse-btn svg{width:22px;height:22px;display:block;pointer-events:none}',
-      '#dsh-pulse-bg{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:' + ZB + ';pointer-events:none;',
+      '#dsh-pulse-bg{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;',
       'opacity:0;transition:opacity .45s ease;',
       '-webkit-mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,#000 56%,transparent 100%);',
       'mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,#000 56%,transparent 100%)}',
@@ -86,7 +86,9 @@
 
     bgCanvas = document.createElement('canvas')
     bgCanvas.id = 'dsh-pulse-bg'
-    document.body.appendChild(bgCanvas)
+    // 插到 body 最前面 + 负 z-index：它排在应用根节点之前，才能真的待在内容「后面」
+    if (document.body.firstChild) document.body.insertBefore(bgCanvas, document.body.firstChild)
+    else document.body.appendChild(bgCanvas)
 
     btn = document.createElement('div')
     btn.id = 'dsh-pulse-btn'
