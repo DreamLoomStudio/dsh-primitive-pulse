@@ -2,7 +2,7 @@
  *
  * 零依赖 IIFE：自己建 DOM，不碰宿主的 React 树。
  * 数据链路：/dsh-pulse/state（轮询）→ core.js 分词 + 义原流 → 三个面板
- * 两种形态：右下角圆钮展开的悬浮面板；背景模式（星图铺满页面、慢速自旋）
+ * 两种形态：右下角圆钮展开的悬浮面板；看板按钮 → 右侧 iframe 打开完整看板
  */
 (function () {
   'use strict'
@@ -65,7 +65,6 @@
       '#dsh-pulse-panel.on{display:flex}',
       '.dsp-head{display:flex;align-items:center;gap:8px;padding:9px 11px;border-bottom:1px solid rgba(96,150,220,.16);',
       'cursor:move;user-select:none;background:var(--p-headd)}',
-  '/* —— 跟随主题：只换外框、标题、指纹卡、底栏；两块发光画布（星图 / 基元流）钉死暗底 —— */ html.dsp-light #dsh-pulse-panel{--p-bg:rgba(255,255,255,.97);--p-fg:#1b2634;--p-dim:#5d6b7c;--p-sub:#33414f;--p-head:rgba(238,243,250,.96);--p-line:rgba(40,70,110,.14);--p-accent:#2b6fd0;--p-card:#eef3fa;--p-headd:linear-gradient(180deg,rgba(226,233,244,.75),rgba(246,249,253,.35));--p-bar1:#7fa8dd;--p-bar2:#2b6fd0;box-shadow:0 18px 50px rgba(30,50,80,.18)} html.dsp-light #dsh-pulse-panel #dsp-brain,html.dsp-light #dsh-pulse-panel #dsp-eeg{background:#0b1420;border-color:rgba(96,150,220,.18)} html.dsp-light #dsh-pulse-panel #dsp-eeg{background:#0d1726}',
       '.dsp-dot{width:7px;height:7px;border-radius:50%;background:#4ea1ff;box-shadow:0 0 8px #4ea1ff}',
       '.dsp-title{font-weight:600;letter-spacing:.04em;color:var(--p-fg)}',
       '.dsp-sub{color:var(--p-dim);font-size:11px;margin-left:auto;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
@@ -191,7 +190,6 @@
       }
     } catch (e) {}
     bgPal = 'paper'
-    try { document.documentElement.classList.toggle('dsp-light', light) } catch (x9) {}
     return light
   }
   /* ===== 背景层：贴在「真正画底色的那一层」里面，负 z-index =====
@@ -260,7 +258,7 @@
       '<span class="dsp-sub">等待回答…</span><span class="dsp-rl" title="重载挂件（改完代码不用重启）">↻</span>',
       '<span class="dsp-x" title="收起">✕</span></div>',
       '<div class="dsp-body">',
-      '  <div class="dsp-sec"><h4>基元星图 <span>每个点 = 一簇义原</span><em id="dsp-bgtoggle">背景模式</em></h4>',
+      '  <div class="dsp-sec"><h4>基元星图 <span>每个点 = 一簇义原</span><em id="dsp-boardbtn" title="在侧栏打开完整看板">看板 ↗</em></h4>',
       '    <canvas class="dsp-cv" id="dsp-brain" height="220"></canvas></div>',
       '  <div class="dsp-sec"><h4>基元流 <span>义原激活曲线</span></h4>',
       '    <canvas class="dsp-cv" id="dsp-eeg" height="150"></canvas></div>',
@@ -289,10 +287,10 @@
       if (!v) return
       ensureEngine(function () { analyze(v, '粘贴') })
     })
-    var bgT = panel.querySelector('#dsp-bgtoggle')
+    var bgT = panel.querySelector('#dsp-boardbtn')
     bgT.addEventListener('click', function (e) {
       e.stopPropagation()
-      setBackground(!bgOn)
+      toggleBoard()
     })
 
     var thT = panel.querySelector('#dsp-theme')
@@ -344,7 +342,7 @@
     var pdrag = null
     var head = panel.querySelector('.dsp-head')
     head.addEventListener('mousedown', function (e) {
-      if (e.target.classList.contains('dsp-x') || e.target.id === 'dsp-bgtoggle') return
+      if (e.target.classList.contains('dsp-x') || e.target.id === 'dsp-boardbtn') return
       pdrag = { x: e.clientX, y: e.clientY, r: panel.getBoundingClientRect() }
       e.preventDefault()
     })
@@ -396,8 +394,7 @@
     }
     try { applyTheme() } catch (e) {}
 
-    if (lsGet('dshPulseBg', '0') === '1') setBackground(true)
-  }
+    }
 
   function restoreBtnPos() {
     var raw = lsGet('dshPulseBtn', '')
@@ -425,11 +422,56 @@
     cv.height = Math.round(cssH * dpr)
   }
 
-  /* 跟随宿主明暗：只影响面板外框配色，两块发光画布固定暗底 */
+  /* 背景模式已停用；留这条只为兼容旧调用 */
   function applyTheme() {
     try { syncHostTheme() } catch (e) {}
   }
 
+  /* ---------- 侧栏看板：把最初的单页演示以 iframe 形式拉到右侧 ---------- */
+  var boardEl = null
+  var boardOn = false
+
+  function boardCss() {
+    if (document.getElementById('dsp-board-css')) return
+    var st = document.createElement('style')
+    st.id = 'dsp-board-css'
+    st.textContent = '#dsh-pulse-board{position:fixed;top:0;right:0;bottom:0;width:min(640px,50vw);z-index:2147483600;'
+      + 'background:#05070d;border-left:1px solid rgba(96,150,220,.30);box-shadow:-24px 0 60px rgba(0,0,0,.5);'
+      + 'display:flex;flex-direction:column;transform:translateX(103%);transition:transform .28s cubic-bezier(.2,.7,.2,1);}'
+      + '#dsh-pulse-board.on{transform:none}'
+      + '#dsh-pulse-board .dsp-bhead{display:flex;align-items:center;gap:8px;padding:9px 12px;'
+      + 'border-bottom:1px solid rgba(96,150,220,.22);color:#dbe9fb;font:600 12px/1 sans-serif;}'
+      + '#dsh-pulse-board .dsp-bhead b{font-weight:600}'
+      + '#dsh-pulse-board .dsp-bhead span{margin-left:auto;cursor:pointer;opacity:.6;padding:2px 6px}'
+      + '#dsh-pulse-board .dsp-bhead span:hover{opacity:1}'
+      + '#dsh-pulse-board iframe{flex:1;width:100%;border:0;background:#05070d;display:block}'
+    document.head.appendChild(st)
+  }
+
+  function toggleBoard() {
+    if (boardOn) { closeBoard(); return }
+    boardCss()
+    if (!boardEl) {
+      boardEl = document.createElement('div')
+      boardEl.id = 'dsh-pulse-board'
+      boardEl.innerHTML = '<div class="dsp-bhead"><b>语义脉冲 · 看板</b><span id="dsp-boardclose">✕</span></div>'
+        + '<iframe id="dsp-boardframe" src="/dsh-pulse/board" title="语义脉冲看板"></iframe>'
+      document.body.appendChild(boardEl)
+      var c = boardEl.querySelector('#dsp-boardclose')
+      if (c) c.addEventListener('click', closeBoard)
+    }
+    boardEl.classList.add('on')
+    boardOn = true
+    var b = panel.querySelector('#dsp-boardbtn')
+    if (b) b.classList.add('on')
+  }
+
+  function closeBoard() {
+    boardOn = false
+    if (boardEl) boardEl.classList.remove('on')
+    var b = panel.querySelector('#dsp-boardbtn')
+    if (b) b.classList.remove('on')
+  }
   function setBackground(on) {
     bgOn = !!on
     lsSet('dshPulseBg', bgOn ? '1' : '0')
