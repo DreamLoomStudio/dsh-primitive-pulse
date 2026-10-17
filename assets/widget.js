@@ -212,13 +212,6 @@
       + '<path d="M3 13h3l2-5 3 10 2.5-7 2 4H21" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     document.body.appendChild(btn)
     restoreBtnPos()
-    // 热更会重建 DOM：面板开合状态从 localStorage 恢复，别每次跳回小球
-    if (opened) {
-      panel.classList.add('on')
-      fit(panel.querySelector('#dsp-brain'), 220)
-      fit(panel.querySelector('#dsp-eeg'), 150)
-    }
-    applyTheme()
 
     panel = document.createElement('div')
     panel.id = 'dsh-pulse-panel'
@@ -333,6 +326,16 @@
     fit(panel.querySelector('#dsp-brain'), 220)
     fit(panel.querySelector('#dsp-eeg'), 150)
     fit(bgCanvas, window.innerHeight)
+
+    // 热更会重建 DOM：面板开合状态从 localStorage 恢复，别每次跳回小球
+    // （必须放在 panel 建完之后，否则一次 ReferenceError 就能把整个 build 打死 —— 球会变成死的）
+    if (opened) {
+      panel.classList.add('on')
+      fit(panel.querySelector('#dsp-brain'), 220)
+      fit(panel.querySelector('#dsp-eeg'), 150)
+    }
+    try { applyTheme() } catch (e) {}
+
     if (lsGet('dshPulseBg', '0') === '1') setBackground(true)
   }
 
@@ -963,7 +966,19 @@
   function boot() {
     if (!document.body) return setTimeout(boot, 60)
     try { window.__dshPulseTheme = theme } catch (x) {}
-    build()
+    // 构建失败不能把整个挂件带走：报错塞进窗口和球的 title，至少还能看出来怎么回事
+    try {
+      build()
+    } catch (e) {
+      try {
+        window.__dshPulseErr = String((e && e.stack) || e)
+        if (btn) btn.title = '挂件初始化失败：' + (e && e.message)
+        console.error('[dsh-pulse] build 失败', e)
+      } catch (x2) {}
+    }
+    window.addEventListener('error', function (ev) {
+      try { window.__dshPulseErr = String(ev && ev.message) } catch (x3) {}
+    })
     requestAnimationFrame(tick)
     setInterval(function () { if (dead()) return; poll(false) }, 2000)
     window.addEventListener('keydown', function (e) {
