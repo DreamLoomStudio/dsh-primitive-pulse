@@ -81,7 +81,11 @@ dsh plugin --profile web remove dsh-primitive-pulse
 
 ## 开发
 
+先 clone 仓库（`test/` 与 `script/` 不在发布包的 `files` 里，装进 `node_modules` 的那份没有它们）：
+
 ```powershell
+git clone https://github.com/DreamLoomStudio/dsh-primitive-pulse.git
+cd dsh-primitive-pulse
 node test/smoke.mjs            # 核心链路（分词 → 义原流 → 簇帧 → 指纹）
 node test/widget_headless.mjs  # 挂件 DOM/Canvas 用最小桩跑一遍
 node test/english.mjs          # 英文词表
