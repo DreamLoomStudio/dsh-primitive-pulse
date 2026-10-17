@@ -167,6 +167,9 @@ console.log('指纹 HTML :', fp.slice(0, 90).replace(/\n/g, ' '))
 console.log('绘制调用  : arc', calls.arc, 'stroke', calls.stroke, 'fill', calls.fill, 'fillText', calls.fillText.length)
 console.log('导联标签  :', calls.fillText.slice(0, 8).join(' / '))
 
+// 构建期异常守卫：build 抛错时球/面板会变成死物，这里直接判失败
+if (sandbox.__dshPulseErr) throw new Error('挂件构建期异常：' + sandbox.__dshPulseErr)
+
 const ok = calls.arc > 300 && calls.stroke > 0 && fp.includes('dsp-fp')
 if (!ok) throw new Error('挂件没有真的画东西')
 console.log('WIDGET OK')
