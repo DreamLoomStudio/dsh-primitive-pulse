@@ -435,14 +435,14 @@
     if (document.getElementById('dsp-board-css')) return
     var st = document.createElement('style')
     st.id = 'dsp-board-css'
-    st.textContent = '#dsh-pulse-board{position:fixed;top:0;right:0;bottom:0;width:min(640px,50vw);z-index:2147483600;'
+    st.textContent = '#dsh-pulse-board{position:fixed;top:38px;right:0;bottom:0;-webkit-app-region:no-drag;width:min(640px,50vw);z-index:2147483600;'
       + 'background:#05070d;border-left:1px solid rgba(96,150,220,.30);box-shadow:-24px 0 60px rgba(0,0,0,.5);'
       + 'display:flex;flex-direction:column;transform:translateX(103%);transition:transform .28s cubic-bezier(.2,.7,.2,1);}'
       + '#dsh-pulse-board.on{transform:none}'
       + '#dsh-pulse-board .dsp-bhead{display:flex;align-items:center;gap:8px;padding:9px 12px;'
       + 'border-bottom:1px solid rgba(96,150,220,.22);color:#dbe9fb;font:600 12px/1 sans-serif;}'
       + '#dsh-pulse-board .dsp-bhead b{font-weight:600}'
-      + '#dsh-pulse-board .dsp-bhead span{margin-left:auto;cursor:pointer;opacity:.6;padding:2px 6px}'
+      + '#dsh-pulse-board .dsp-bhead span{cursor:pointer;opacity:.6;padding:2px 6px;margin-right:6px}'
       + '#dsh-pulse-board .dsp-bhead span:hover{opacity:1}'
       + '#dsh-pulse-board iframe{flex:1;width:100%;border:0;background:#05070d;display:block}'
     document.head.appendChild(st)
@@ -454,7 +454,7 @@
     if (!boardEl) {
       boardEl = document.createElement('div')
       boardEl.id = 'dsh-pulse-board'
-      boardEl.innerHTML = '<div class="dsp-bhead"><b>语义脉冲 · 看板</b><span id="dsp-boardclose">✕</span></div>'
+      boardEl.innerHTML = '<div class="dsp-bhead"><span id="dsp-boardclose">✕</span><b>语义脉冲 · 看板</b></div>'
         + '<iframe id="dsp-boardframe" src="/dsh-pulse/board" title="语义脉冲看板"></iframe>'
       document.body.appendChild(boardEl)
       var c = boardEl.querySelector('#dsp-boardclose')
