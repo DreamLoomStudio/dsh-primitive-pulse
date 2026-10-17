@@ -1,0 +1,41 @@
+{
+  "name": "dsh-primitive-pulse",
+  "version": "0.1.0",
+  "description": "语义脉冲：在 DSH 里实时看当前回答点亮了哪些语义基元（HowNet 义原），悬浮面板 + 迷你脑图 + 多导联波形",
+  "type": "module",
+  "main": "lib/index.js",
+  "files": [
+    "lib",
+    "assets",
+    "cordis.patch.yml",
+    "screenshots.json",
+    "README.md",
+    "README.en.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "sememe",
+    "hownet",
+    "visualization"
+  ],
+  "license": "MIT",
+  "author": "DreamLoomStudio",
+  "homepage": "https://github.com/DreamLoomStudio/dsh-primitive-pulse#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DreamLoomStudio/dsh-primitive-pulse.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DreamLoomStudio/dsh-primitive-pulse/issues"
+  },
+  "engines": {
+    "dsh": ">=0.2.0-rc.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
