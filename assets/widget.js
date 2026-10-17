@@ -238,6 +238,10 @@
   }
 
   function unmountBg() {}
+  /* 构建收尾：先把词典拉起来，别等用户点开才载（4.3MB，等他点开时再解析会看到空白面板） */
+  function warmEngine() {
+    try { ensureEngine(function () { poll(true) }) } catch (e) {}
+  }
   function build() {
     css()
 
@@ -252,6 +256,7 @@
       + '<path d="M3 13h3l2-5 3 10 2.5-7 2 4H21" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     document.body.appendChild(btn)
     restoreBtnPos()
+    warmEngine()
 
     panel = document.createElement('div')
     panel.id = 'dsh-pulse-panel'
