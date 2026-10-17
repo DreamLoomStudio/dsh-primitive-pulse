@@ -122,8 +122,12 @@ sandbox.self = window
 vm.createContext(sandbox)
 
 // 真实核心 + 真实词典（桩掉 document 就够，脚本本身是经典脚本）
-vm.runInContext(fs.readFileSync(path.join(WEB, 'js', 'core.js'), 'utf8'), sandbox)
-vm.runInContext(fs.readFileSync(path.join(WEB, 'data', 'sememe-data.js'), 'utf8'), sandbox)
+// 仓库里自带 assets/ 副本，独立 clone 也能跑；开发树上则可回落到 ../web 的源
+const hasBundled = fs.existsSync(path.join(ASSETS, 'core.js'))
+const CORE = hasBundled ? path.join(ASSETS, 'core.js') : path.join(WEB, 'js', 'core.js')
+const DATA = hasBundled ? path.join(ASSETS, 'sememe-data.js') : path.join(WEB, 'data', 'sememe-data.js')
+vm.runInContext(fs.readFileSync(CORE, 'utf8'), sandbox)
+vm.runInContext(fs.readFileSync(DATA, 'utf8'), sandbox)
 
 const SAMPLE = '导数的几何意义是函数图像在某一点切线的斜率。当自变量的增量趋近于零时，函数的增量与自变量增量之比的极限，就是这一点的导数。'
 sandbox.fetch = () => Promise.resolve({ json: () => Promise.resolve({ seq: 1, text: SAMPLE, ts: Date.now(), complete: true, turn: 1 }) })
