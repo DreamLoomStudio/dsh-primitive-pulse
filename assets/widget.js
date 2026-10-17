@@ -29,8 +29,9 @@
   var engine = null
   var loading = false
   var replay = null
-  var opened = false
+  var opened = lsGet('dshPulseOpened', '0') === '1'
   var bgOn = false
+  var theme = lsGet('dshPulseTheme', 'neon')   // neon=深底冷光脉冲 / liquid=浅底黑墨涌动
   var lastTick = 0
 
   function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v } catch (e) { return d } }
@@ -78,6 +79,9 @@
       '.dsp-sec h4 em{margin-left:auto;font-style:normal;font-size:10.5px;color:#5aa4ff;cursor:pointer;border:1px solid rgba(90,164,255,.35);',
       'border-radius:5px;padding:1px 6px}',
       '.dsp-sec h4 em.on{background:rgba(90,164,255,.18);color:#bcd9ff}',
+    /* 液态主题：面板里的星图改成浅纸底 */
+    'html.dsp-liquid #dsp-brain{background:radial-gradient(circle at 50% 45%,#fdfdff,#e9ecf2)}',
+    'html.dsp-liquid #dsh-pulse-bg.light{filter:none}',
       'canvas.dsp-cv{width:100%;display:block;border-radius:8px;background:radial-gradient(circle at 50% 45%,rgba(22,38,58,.55),rgba(7,11,18,.9))}',
       '.dsp-fp{display:flex;align-items:center;gap:6px;margin:3px 0}',
       '.dsp-fp i{font-style:normal;width:74px;color:#a9c3dc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}',
@@ -105,29 +109,49 @@
      画布只在最近的层叠上下文里生效，应用那层底色在它之上。
      解法：把画布插进那个容器内部当第一个子节点，并给它 isolation:isolate
      造出独立的层叠上下文，负 z-index 就能落在这层底色之上、内容之下。 */
+  function opaque(c) {
+    return !!c && c !== 'transparent' && c !== 'rgba(0, 0, 0, 0)'
+  }
+
+  /* 用命中测试找「真正挡住画面的那一层」：
+     elementsFromPoint 给的是从最上到最下的完整层栈，从上往下扫，
+     第一个有实心底色的元素 = 那一处最深的不透明底。
+     把画布插成它的第一个子节点 + isolation:isolate，画布就落在
+     它的底色之上、它所有内容之下 —— 这正是背景该待的位置。 */
   function findBgHost() {
-    var root = document.getElementById('root') || document.body
     var vw = window.innerWidth || 1200, vh = window.innerHeight || 800
-    var cx = vw / 2, cy = vh / 2
-    var vArea = vw * vh
+    var els = null
+    try { els = document.elementsFromPoint(vw / 2, vh / 2) } catch (x) {}
+    if (els && els.length) {
+      for (var i = 0; i < els.length; i++) {
+        var e = els[i]
+        if (e === bgCanvas || (bgCanvas && bgCanvas.contains(e))) continue
+        var cs = null
+        try { cs = window.getComputedStyle(e) } catch (x2) { continue }
+        if (e.tagName === 'HTML') break
+        if (!opaque(cs.backgroundColor)) continue
+        return e
+      }
+    }
+    // 兜底：老办法（扫 DOM，取最深的、盖住屏幕中心的不透明面板）
+    var root = document.getElementById('root') || document.body
     var list = root.querySelectorAll('*')
     var limit = Math.min(list.length, 8000)
+    var cx = vw / 2, cy = vh / 2, vArea = vw * vh
     var best = null, bestArea = Infinity
-    for (var i = 0; i < limit; i++) {
-      var e = list[i]
-      if (e === bgCanvas) continue
-      var r = e.getBoundingClientRect()
+    for (var j = 0; j < limit; j++) {
+      var el = list[j]
+      if (el === bgCanvas) continue
+      var r = el.getBoundingClientRect()
       if (r.width < 8 || r.height < 8) continue
-      // 只看盖住「屏幕中心」的层 —— 那才是真正挡住脑图的那些底色
       if (cx < r.left || cx > r.right || cy < r.top || cy > r.bottom) continue
-      var bg = '', cs = null
-      try { cs = window.getComputedStyle(e); bg = cs.backgroundColor } catch (x) {}
-      if (!bg || bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)') continue
-      // 带 transform/filter 的容器会让 position:fixed 退化成相对它定位 → 画布会跟着滚
-      if (cs && (cs.transform !== 'none' || cs.filter !== 'none' || cs.perspective !== 'none')) continue
+      var bgc2 = '', cs2 = null
+      try { cs2 = window.getComputedStyle(el); bgc2 = cs2.backgroundColor } catch (x3) {}
+      if (!opaque(bgc2)) continue
+      if (cs2 && (cs2.transform !== 'none' || cs2.filter !== 'none' || cs2.perspective !== 'none')) continue
       var area = r.width * r.height
-      if (area < vArea * 0.30) continue          // 太小的块（文字/徽标）不算面板
-      if (area < bestArea) { bestArea = area; best = e }   // 取最深的那个面板
+      if (area < vArea * 0.30) continue
+      if (area < bestArea) { bestArea = area; best = el }
     }
     return best
   }
@@ -169,7 +193,7 @@
       try { bgc = window.getComputedStyle(document.body).backgroundColor } catch (x) {}
       bgDiag = '背景宿主 body(兜底) bg=' + bgc
     }
-    var light = lumOf(bgc) > 0.55
+    var light = theme !== 'liquid' && lumOf(bgc) > 0.55
     bgCanvas.classList[light ? 'add' : 'remove']('light')
     bgDiag += light ? ' 浅色主题' : ' 深色主题'
   }
@@ -188,6 +212,13 @@
       + '<path d="M3 13h3l2-5 3 10 2.5-7 2 4H21" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     document.body.appendChild(btn)
     restoreBtnPos()
+    // 热更会重建 DOM：面板开合状态从 localStorage 恢复，别每次跳回小球
+    if (opened) {
+      panel.classList.add('on')
+      fit(panel.querySelector('#dsp-brain'), 220)
+      fit(panel.querySelector('#dsp-eeg'), 150)
+    }
+    applyTheme()
 
     panel = document.createElement('div')
     panel.id = 'dsh-pulse-panel'
@@ -196,7 +227,7 @@
       '<span class="dsp-sub">等待回答…</span><span class="dsp-rl" title="重载挂件（改完代码不用重启）">↻</span>',
       '<span class="dsp-x" title="收起">✕</span></div>',
       '<div class="dsp-body">',
-      '  <div class="dsp-sec"><h4>基元星图 <span>每个点 = 一簇义原</span><em id="dsp-bgtoggle">背景模式</em></h4>',
+      '  <div class="dsp-sec"><h4>基元星图 <span>每个点 = 一簇义原</span><em id="dsp-theme">脉冲</em><em id="dsp-bgtoggle">背景模式</em></h4>',
       '    <canvas class="dsp-cv" id="dsp-brain" height="220"></canvas></div>',
       '  <div class="dsp-sec"><h4>基元流 <span>义原激活曲线</span></h4>',
       '    <canvas class="dsp-cv" id="dsp-eeg" height="150"></canvas></div>',
@@ -230,6 +261,19 @@
       e.stopPropagation()
       setBackground(!bgOn)
     })
+
+    var thT = panel.querySelector('#dsp-theme')
+    if (thT) {
+      thT.textContent = theme === 'liquid' ? '液态' : '脉冲'
+      thT.title = '切换星图风格：脉冲（深底冷光）/ 液态（浅底黑墨涌动）'
+      thT.addEventListener('click', function (e) {
+        e.stopPropagation()
+        theme = theme === 'liquid' ? 'neon' : 'liquid'
+        lsSet('dshPulseTheme', theme)
+        thT.textContent = theme === 'liquid' ? '液态' : '脉冲'
+        applyTheme()
+      })
+    }
 
     // 圆钮：拖动 + 点击
     var drag = null
@@ -318,6 +362,13 @@
     cv.height = Math.round(cssH * dpr)
   }
 
+  /* 主题切换：液态时面板里的星图改成浅纸底，背景画布也不用反相了 */
+  function applyTheme() {
+    var liquid = theme === 'liquid'
+    try { document.documentElement.classList.toggle('dsp-liquid', liquid) } catch (x) {}
+    if (bgOn) mountBg()
+  }
+
   function setBackground(on) {
     bgOn = !!on
     lsSet('dshPulseBg', bgOn ? '1' : '0')
@@ -339,6 +390,7 @@
   /* ---------- 开关 ---------- */
   function toggle() {
     opened = !opened
+    lsSet('dshPulseOpened', opened ? '1' : '0')
     panel.classList.toggle('on', opened)
     if (opened) {
       fit(panel.querySelector('#dsp-brain'), 220)
@@ -391,13 +443,26 @@
   }
 
   /* ---------- 数据 ---------- */
+  /* 防热更狂飙：15 秒内最多自动重载 3 次，超了就停手（否则改错代码会把面板锁在重启循环里） */
+  function canAutoReload() {
+    try {
+      var r = JSON.parse(sessionStorage.getItem('dshPulseReloads') || '{"t":0,"n":0}')
+      if (Date.now() - r.t > 15000) r = { t: Date.now(), n: 0 }
+      r.n++
+      sessionStorage.setItem('dshPulseReloads', JSON.stringify(r))
+      return r.n <= 3
+    } catch (e) { return true }
+  }
+
   function poll(force) {
     if (!opened && !bgOn) return
     fetch(BASE + '/state', { headers: { accept: 'application/json' } })
       .then(function (r) { return r.json() })
       .then(function (s) {
         // 服务端报的 widget.js mtime 与我加载时的 ?v= 不一致 → 磁盘上已经是新版，自动换掉自己
-        if (s && s.wv && String(s.wv) !== String(SELF_V)) { reloadWidget(s.wv); return }
+        if (s && s.wv && String(s.wv) !== String(SELF_V)) {
+          if (canAutoReload()) { reloadWidget(s.wv); return }
+        }
         var changed = s && s.seq !== state.seq && s.text
         state = s || state
         if (subEl) {
@@ -579,6 +644,84 @@
     return DUST
   }
 
+  /* 液态主题：浅底上画深墨，跟「深底画冷光」是同一套结构的反相版本 */
+  function drawLiquid(ctx, pts, n, ce, D, held, t, bg, dpr, SK, W, H) {
+    var INK = '38,42,52'
+    if (bg) {
+      var g = ctx.createRadialGradient(W * 0.5, H * 0.46, 10 * dpr, W * 0.5, H * 0.5, Math.min(W, H) * 0.62)
+      g.addColorStop(0, 'rgba(206,211,220,.22)')
+      g.addColorStop(1, 'rgba(206,211,220,0)')
+      ctx.fillStyle = g
+      ctx.fillRect(0, 0, W, H)
+    }
+    // 碎点
+    for (var si = 0; si < D.n; si++) {
+      var dz = D.dp[si]
+      ctx.fillStyle = 'rgba(' + INK + ',' + (0.09 + 0.20 * dz).toFixed(3) + ')'
+      ctx.beginPath(); ctx.arc(D.px[si], D.py[si], (0.75 + 0.85 * dz) * dpr, 0, 6.2832); ctx.fill()
+    }
+    // 底网
+    ctx.lineWidth = Math.max(0.6, dpr * 0.5)
+    for (var e = 0; e < ce.length; e += 2) {
+      var a = ce[e], b = ce[e + 1]
+      var d = (pts[a * 3 + 2] + pts[b * 3 + 2]) * 0.5
+      ctx.strokeStyle = 'rgba(' + INK + ',' + ((bg ? 0.055 : 0.075) + 0.16 * d).toFixed(3) + ')'
+      ctx.beginPath()
+      ctx.moveTo(pts[a * 3], pts[a * 3 + 1])
+      ctx.lineTo(pts[b * 3], pts[b * 3 + 1])
+      ctx.stroke()
+    }
+    // 墨球：远小近大，两层叠出柔边（液体感靠外圈淡、内圈实）
+    var ord = []
+    for (var oi = 0; oi < n; oi++) ord.push(oi)
+    ord.sort(function (u, v) { return pts[u * 3 + 2] - pts[v * 3 + 2] })
+    for (var oj = 0; oj < ord.length; oj++) {
+      var k = ord[oj], dp = pts[k * 3 + 2]
+      var wob = 1 + 0.07 * Math.sin(t / 820 + k * 1.7)
+      var r = (1.9 + 2.6 * dp) * dpr * SK * wob
+      var x = pts[k * 3], y = pts[k * 3 + 1]
+      ctx.fillStyle = 'rgba(' + INK + ',' + ((bg ? 0.09 : 0.11) + 0.13 * dp).toFixed(3) + ')'
+      ctx.beginPath(); ctx.arc(x, y, r * 2.1, 0, 6.2832); ctx.fill()
+      ctx.fillStyle = 'rgba(' + INK + ',' + ((bg ? 0.26 : 0.30) + 0.34 * dp).toFixed(3) + ')'
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill()
+    }
+    // 活化：两端都活的边变成涌动的液体管道
+    ctx.lineCap = 'round'
+    for (var e2 = 0; e2 < ce.length; e2 += 2) {
+      var a2 = ce[e2], b2 = ce[e2 + 1]
+      var s2 = Math.min(held[a2] || 0, held[b2] || 0)
+      if (s2 < 0.10) continue
+      var ax = pts[a2 * 3], ay = pts[a2 * 3 + 1], bx = pts[b2 * 3], by = pts[b2 * 3 + 1]
+      ctx.strokeStyle = 'rgba(' + INK + ',' + (0.08 + 0.24 * s2).toFixed(3) + ')'
+      ctx.lineWidth = (1.1 + 2.0 * s2) * dpr
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke()
+      // 液体：沿边流动的墨珠，越活越密越快
+      var flow = (t / (900 - 320 * s2)) + (a2 * 0.37 + b2 * 0.71)
+      var drops = 1 + Math.floor(s2 * 2.6)
+      for (var dq = 0; dq < drops; dq++) {
+        var ph = (flow + dq / drops) % 1
+        if (ph < 0) ph += 1
+        var px = ax + (bx - ax) * ph, py = ay + (by - ay) * ph
+        var rr = (2.4 + 3.4 * s2) * dpr * (0.55 + 0.45 * Math.sin(ph * 3.1416))
+        ctx.fillStyle = 'rgba(' + INK + ',' + (0.05 + 0.11 * s2).toFixed(3) + ')'
+        ctx.beginPath(); ctx.arc(px, py, rr * 2.4, 0, 6.2832); ctx.fill()
+        ctx.fillStyle = 'rgba(' + INK + ',' + (0.10 + 0.28 * s2).toFixed(3) + ')'
+        ctx.beginPath(); ctx.arc(px, py, rr, 0, 6.2832); ctx.fill()
+      }
+    }
+    // 活化节点：墨球外扩一圈晕
+    for (var hk = 0; hk < n; hk++) {
+      var v = Math.min(1, held[hk] || 0)
+      if (v < 0.10) continue
+      var hdp = pts[hk * 3 + 2]
+      var hr = (3.0 + 6.0 * Math.sqrt(v)) * (0.85 + 0.3 * hdp) * dpr * SK
+      ctx.fillStyle = 'rgba(' + INK + ',' + (0.04 + 0.10 * v).toFixed(3) + ')'
+      ctx.beginPath(); ctx.arc(pts[hk * 3], pts[hk * 3 + 1], hr * 2.2, 0, 6.2832); ctx.fill()
+      ctx.fillStyle = 'rgba(' + INK + ',' + (0.22 + 0.48 * v).toFixed(3) + ')'
+      ctx.beginPath(); ctx.arc(pts[hk * 3], pts[hk * 3 + 1], hr * 0.55, 0, 6.2832); ctx.fill()
+    }
+  }
+
   function drawScene(cv, held, t, rot, scaleK, opts) {
     if (!cv || !cv._w) return
     opts = opts || {}
@@ -629,6 +772,12 @@
       D.px[di] = dxr * sc + cx
       D.py[di] = cy - dyr * sc
       D.dp[di] = (dzr - minZ) / zSpan
+    }
+
+    // 液态主题走另一套画法（深墨画在浅底上），画完就返回
+    if (theme === 'liquid') {
+      drawLiquid(ctx, pts, n, ce, D, held, t, bg, dpr, SK, W, H)
+      return
     }
 
     // 冷光底：让节点从深色底里浮起来
@@ -813,6 +962,7 @@
   /* ---------- 启动 ---------- */
   function boot() {
     if (!document.body) return setTimeout(boot, 60)
+    try { window.__dshPulseTheme = theme } catch (x) {}
     build()
     requestAnimationFrame(tick)
     setInterval(function () { if (dead()) return; poll(false) }, 2000)
