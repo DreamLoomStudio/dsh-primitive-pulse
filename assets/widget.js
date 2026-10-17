@@ -78,9 +78,9 @@
       '.dsp-sec{margin-top:9px}',
       '.dsp-sec h4{margin:0 0 5px;font-size:11px;font-weight:600;color:var(--p-head);letter-spacing:.05em;display:flex;align-items:center;gap:6px}',
       '.dsp-sec h4 span{color:var(--p-sub);font-weight:400;letter-spacing:0}',
-      '.dsp-sec h4 em{margin-left:auto;font-style:normal;font-size:10.5px;color:#5aa4ff;cursor:pointer;border:1px solid rgba(90,164,255,.35);',
+      '.dsp-sec h4 em{margin-left:auto;font-style:normal;font-size:10.5px;color:var(--p-accent);cursor:pointer;border:1px solid var(--p-accent);font-weight:600;',
       'border-radius:5px;padding:1px 6px}',
-      '.dsp-sec h4 em.on{background:rgba(90,164,255,.18);color:#bcd9ff}',
+      '.dsp-sec h4 em.on{background:var(--p-accent);color:#fff}',
     /* 液态主题：面板里的星图改成浅纸底 */
     'html.dsp-light #dsp-eeg{background:#0b1420;filter:invert(1) hue-rotate(180deg)}',
     
@@ -413,7 +413,9 @@
     lsSet('dshPulseBg', bgOn ? '1' : '0')
     bgCanvas.classList.toggle('on', bgOn)
     // 不依赖 CSS 类：直接写行内样式，避免被宿主的样式覆盖或类名没生效
-    bgCanvas.style.opacity = bgOn ? '0.72' : '0'
+    var isLight = false
+    try { isLight = document.documentElement.classList.contains('dsp-light') } catch (e4) {}
+    bgCanvas.style.opacity = bgOn ? (isLight ? '0.92' : '0.72') : '0'
     bgCanvas.style.display = bgOn ? 'block' : 'none'
     bgCanvas.setAttribute('data-bg', bgOn ? '1' : '0')
     var t = panel.querySelector('#dsp-bgtoggle')
@@ -687,9 +689,9 @@
 
   /* 三种底色下各有一套墨色：面板永远是霓虹蓝白，页面背景按宿主明暗取「浅蓝白」或「灰黑」 */
   var PAL = {
-    neon: { line: [104, 158, 216], dust: [138, 182, 230], node: [158, 202, 246], lit: [170, 224, 255], hot: [246, 252, 255], glow: [20, 52, 92] },
-    paper: { line: [96, 148, 206], dust: [128, 168, 214], node: [92, 140, 198], lit: [52, 112, 186], hot: [28, 78, 150], glow: [150, 180, 216] },
-    graphite: { line: [138, 146, 160], dust: [124, 132, 146], node: [152, 160, 174], lit: [180, 188, 200], hot: [208, 214, 224], glow: [120, 128, 142] }
+    neon: { line: [104, 158, 216], dust: [138, 182, 230], node: [158, 202, 246], lit: [170, 224, 255], hot: [246, 252, 255], glow: [20, 52, 92], aL: 0.10, aD0: 0.14, aD1: 0.34, aN0: 0.26, aN1: 0.46, aLit: 0.34 },
+    paper: { line: [86, 136, 196], dust: [108, 150, 202], node: [74, 124, 184], lit: [40, 96, 172], hot: [24, 70, 140], glow: [150, 180, 216], aL: 0.20, aD0: 0.30, aD1: 0.42, aN0: 0.42, aN1: 0.44, aLit: 0.50 },
+    graphite: { line: [148, 156, 170], dust: [136, 144, 158], node: [162, 170, 184], lit: [190, 198, 210], hot: [214, 220, 230], glow: [120, 128, 142], aL: 0.14, aD0: 0.20, aD1: 0.40, aN0: 0.32, aN1: 0.46, aLit: 0.46 }
   }
   var bgPal = 'neon'
   function pal(which) { return PAL[which] || PAL.neon }
@@ -858,7 +860,7 @@
     for (var e = 0; e < ce.length; e += 2) {
       var a = ce[e], b = ce[e + 1]
       var d1 = (pts[a * 3 + 2] + pts[b * 3 + 2]) * 0.5
-      ctx.strokeStyle = 'rgba(' + P.line[0] + ',' + P.line[1] + ',' + P.line[2] + ',' + ((bg ? 0.10 : 0.12) + 0.28 * d1).toFixed(3) + ')'
+      ctx.strokeStyle = 'rgba(' + P.line[0] + ',' + P.line[1] + ',' + P.line[2] + ',' + (bg ? P.aL : 0.12) + 0.28 * d1.toFixed(3) + ')'
       ctx.beginPath()
       ctx.moveTo(pts[a * 3], pts[a * 3 + 1])
       ctx.lineTo(pts[b * 3], pts[b * 3 + 1])
@@ -870,7 +872,7 @@
     for (var si = 0; si < D.n; si++) {
       var dz = D.dp[si]
       var rr = (0.95 + 0.95 * dz) * dpr
-      var aa = bg ? 0.14 + 0.34 * dz : 0.24 + 0.48 * dz
+      var aa = bg ? P.aD0 + P.aD1 * dz : 0.24 + 0.48 * dz
       ctx.fillStyle = 'rgba(' + P.dust[0] + ',' + P.dust[1] + ',' + P.dust[2] + ',' + aa.toFixed(3) + ')'
       ctx.beginPath(); ctx.arc(D.px[si], D.py[si], rr, 0, 6.2832); ctx.fill()
     }
@@ -882,7 +884,7 @@
     for (var oj = 0; oj < n; oj++) {
       var k = ord[oj], dp = pts[k * 3 + 2]
       var r0 = (1.8 + 2.3 * dp) * dpr * SK
-      var a0 = bg ? 0.26 + 0.46 * dp : 0.38 + 0.62 * dp
+      var a0 = bg ? P.aN0 + P.aN1 * dp : 0.38 + 0.62 * dp
       ctx.fillStyle = 'rgba(' + P.node[0] + ',' + P.node[1] + ',' + P.node[2] + ',' + a0.toFixed(3) + ')'
       ctx.beginPath(); ctx.arc(pts[k * 3], pts[k * 3 + 1], r0, 0, 6.2832); ctx.fill()
     }
@@ -896,7 +898,7 @@
       var s2 = Math.min(litArr[a2] || 0, litArr[b2] || 0)
       if (s2 < 0.10) continue
       var dd2 = (pts[a2 * 3 + 2] + pts[b2 * 3 + 2]) * 0.5
-      ctx.strokeStyle = 'rgba(' + P.lit[0] + ',' + P.lit[1] + ',' + P.lit[2] + ',' + (0.34 * s2 * pulse * (0.5 + 0.5 * dd2)).toFixed(3) + ')'
+      ctx.strokeStyle = 'rgba(' + P.lit[0] + ',' + P.lit[1] + ',' + P.lit[2] + ',' + (P.aLit * s2 * pulse * (0.5 + 0.5 * dd2)).toFixed(3) + ')'
       ctx.lineWidth = (1.0 + 1.2 * s2) * dpr * (bg ? 1.2 : 1)
       ctx.beginPath()
       ctx.moveTo(pts[a2 * 3], pts[a2 * 3 + 1])
